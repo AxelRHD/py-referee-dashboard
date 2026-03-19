@@ -1,3 +1,6 @@
+/* Alpine.js cloak — hide until initialized */
+[x-cloak] { display: none !important; }
+
 /*
  * Nord Theme for Bootstrap 5.3
  * https://www.nordtheme.com
@@ -124,8 +127,7 @@
 /* ── Dashboard layout ─────────────────────────────────── */
 
 .container-dashboard {
-    width: 100%;
-    max-width: 1400px;
+    width: 80%;
     margin: 0 auto;
     padding: 0 1rem;
 }

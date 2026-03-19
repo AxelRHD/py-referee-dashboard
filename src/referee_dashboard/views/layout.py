@@ -1,4 +1,4 @@
-from htpy import a, body, button, div, head, html, i, link, meta, nav, script, title
+from htpy import a, body, button, div, head, html, link, meta, nav, script, title
 from markupsafe import Markup
 
 # Inline script to set theme before render to avoid flash
@@ -9,15 +9,18 @@ _theme_init_script = Markup("""<script>
 })();
 </script>""")
 
-# Theme toggle with Surreal.js (runs after DOM + Surreal are loaded)
+# Alpine.js theme toggle component
 _theme_toggle_script = Markup("""<script>
-me('#theme-toggle').on('click', () => {
-    var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    var theme = dark ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-bs-theme', theme);
-    localStorage.setItem('theme', theme);
-    me('#icon-sun').classToggle('d-none');
-    me('#icon-moon').classToggle('d-none');
+document.addEventListener('alpine:init', () => {
+    Alpine.data('themeToggle', () => ({
+        dark: document.documentElement.getAttribute('data-bs-theme') === 'dark',
+        toggle() {
+            this.dark = !this.dark;
+            var theme = this.dark ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+    }));
 });
 </script>""")
 
@@ -50,16 +53,15 @@ def base_page(page_title: str, *content, container: str = "container"):
             script(
                 src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2/plotly-basic.min.js",
             ),
-            script(
-                src="https://cdn.jsdelivr.net/gh/gnat/surreal@main/surreal.js",
-            ),
+            # alpine:init listeners must come before Alpine.js
             _theme_toggle_script,
+            script(src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"),
         ],
     ]
 
 
 def _navbar():
-    return nav(".navbar.navbar-expand-lg")[
+    return nav(".navbar.navbar-expand-lg.sticky-top")[
         div(".container")[
             a(".navbar-brand", href="/")["Referee Dashboard"],
             div(".d-flex.align-items-center")[
@@ -76,11 +78,13 @@ def _navbar():
 
 
 def _theme_toggle():
-    # Default is dark → show sun icon, hide moon icon
-    return button(
-        "#theme-toggle.theme-toggle",
-        title="Theme wechseln",
-    )[
-        i("#icon-sun.bi.bi-sun"),
-        i("#icon-moon.bi.bi-moon.d-none"),
+    return div(**{"x-data": "themeToggle"})[
+        button(
+            ".theme-toggle",
+            **{"@click": "toggle()"},
+            title="Theme wechseln",
+        )[
+            Markup('<i x-show="dark" class="bi bi-sun"></i>'),
+            Markup('<i x-show="!dark" class="bi bi-moon"></i>'),
+        ],
     ]
