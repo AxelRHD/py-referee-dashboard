@@ -4,7 +4,6 @@ from flask import Flask
 from markupsafe import Markup
 
 from referee_dashboard.config import load_config
-from referee_dashboard.dashboard.app import create_dash_app
 from referee_dashboard.db import init_app
 from referee_dashboard.views.layout import base_page
 
@@ -21,9 +20,8 @@ def create_app():
 
     init_app(app)
 
-    create_dash_app(app)
-
     # Register blueprints
+    from referee_dashboard.routes.dashboard import bp as dashboard_bp
     from referee_dashboard.routes.games import bp as games_bp
     from referee_dashboard.routes.leagues import bp as leagues_bp
     from referee_dashboard.routes.teams import bp as teams_bp
@@ -31,6 +29,7 @@ def create_app():
     app.register_blueprint(leagues_bp)
     app.register_blueprint(teams_bp)
     app.register_blueprint(games_bp)
+    app.register_blueprint(dashboard_bp)
 
     @app.route("/")
     def index():

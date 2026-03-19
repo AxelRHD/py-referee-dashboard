@@ -1,4 +1,4 @@
-from htpy import a, body, button, div, head, html, link, meta, nav, script, title
+from htpy import a, body, button, div, head, html, i, link, meta, nav, script, title
 from markupsafe import Markup
 
 # Inline script to set theme before render to avoid flash
@@ -9,24 +9,21 @@ _theme_init_script = Markup("""<script>
 })();
 </script>""")
 
-# Alpine.js component — must be registered before Alpine loads
+# Theme toggle with Surreal.js (runs after DOM + Surreal are loaded)
 _theme_toggle_script = Markup("""<script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('themeToggle', () => ({
-        dark: document.documentElement.getAttribute('data-bs-theme') === 'dark',
-        toggle() {
-            this.dark = !this.dark;
-            var theme = this.dark ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-bs-theme', theme);
-            localStorage.setItem('theme', theme);
-        }
-    }));
+me('#theme-toggle').on('click', () => {
+    var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    var theme = dark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-bs-theme', theme);
+    localStorage.setItem('theme', theme);
+    me('#icon-sun').classToggle('d-none');
+    me('#icon-moon').classToggle('d-none');
 });
 </script>""")
 
 
-def base_page(page_title: str, *content):
-    """Base HTML layout with Bootstrap, Alpine.js, and Nord theme."""
+def base_page(page_title: str, *content, container: str = "container"):
+    """Base HTML layout. Set container='' to manage layout in content."""
     return html[
         head[
             meta(charset="utf-8"),
@@ -45,16 +42,18 @@ def base_page(page_title: str, *content):
         ],
         body[
             _navbar(),
-            div(".container.mt-4")[content],
-            _theme_toggle_script,
+            div(f".{container}.mt-4")[content] if container else div(".mt-4")[content],
             script(
                 src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
             ),
             script(src="https://cdn.jsdelivr.net/npm/htmx.org@2/dist/htmx.min.js"),
             script(
-                src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2/plotly-basic.min.js"
+                src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2/plotly-basic.min.js",
             ),
-            script(src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"),
+            script(
+                src="https://cdn.jsdelivr.net/gh/gnat/surreal@main/surreal.js",
+            ),
+            _theme_toggle_script,
         ],
     ]
 
@@ -65,10 +64,10 @@ def _navbar():
             a(".navbar-brand", href="/")["Referee Dashboard"],
             div(".d-flex.align-items-center")[
                 div(".navbar-nav.me-auto")[
-                    a(".nav-link", href="/leagues")["Ligen"],
-                    a(".nav-link", href="/teams")["Teams"],
-                    a(".nav-link", href="/games")["Spiele"],
                     a(".nav-link", href="/dashboard/")["Dashboard"],
+                    a(".nav-link", href="/games")["Spiele"],
+                    a(".nav-link", href="/teams")["Teams"],
+                    a(".nav-link", href="/leagues")["Ligen"],
                 ],
                 _theme_toggle(),
             ],
@@ -77,13 +76,11 @@ def _navbar():
 
 
 def _theme_toggle():
-    return div(x_data="themeToggle")[
-        button(
-            ".theme-toggle",
-            **{"@click": "toggle()"},
-            title="Theme wechseln",
-        )[
-            Markup('<i x-show="dark" class="bi bi-sun"></i>'),
-            Markup('<i x-show="!dark" class="bi bi-moon"></i>'),
-        ],
+    # Default is dark → show sun icon, hide moon icon
+    return button(
+        "#theme-toggle.theme-toggle",
+        title="Theme wechseln",
+    )[
+        i("#icon-sun.bi.bi-sun"),
+        i("#icon-moon.bi.bi-moon.d-none"),
     ]

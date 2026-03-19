@@ -2,12 +2,12 @@
 
 ## Stack
 - Python 3.13, uv, just, asdf
-- Flask + Dash (mounted on Flask at /dashboard/)
+- Flask + Plotly.js (basic) for inline charts
 - SQLAlchemy ORM (via flask-sqlalchemy) — no raw SQL
 - htpy for HTML generation — no Jinja templates
 - Bootstrap 5.3 + Bootstrap Icons via CDN — no npm, no build step
 - htmx for server-side filtering (games list)
-- Alpine.js for theme toggle
+- Surreal.js for DOM manipulation (theme toggle)
 - Plotly.js (basic) for inline charts
 - SQLite database
 - Nord theme with dark/light toggle (localStorage persistence)
@@ -16,14 +16,15 @@
 
 ## Project Layout
 - `src/referee_dashboard/` — source root (src layout)
-- `src/referee_dashboard/app.py` — Flask app factory + Dash mount
+- `src/referee_dashboard/app.py` — Flask app factory
 - `src/referee_dashboard/db.py` — SQLAlchemy instance + init + position seeding
 - `src/referee_dashboard/models.py` — ORM models (League, Team, Position, Game)
 - `src/referee_dashboard/config.py` — Config dataclass from .env
-- `src/referee_dashboard/routes/` — Flask blueprints (CRUD)
+- `src/referee_dashboard/routes/` — Flask blueprints (CRUD + dashboard)
+- `src/referee_dashboard/routes/dashboard.py` — Dashboard with widget endpoints
 - `src/referee_dashboard/views/` — htpy view functions + shared components
 - `src/referee_dashboard/views/components.py` — reusable form/table components
-- `src/referee_dashboard/dashboard/` — Dash app (placeholder)
+- `src/referee_dashboard/views/dashboard.py` — dashboard widgets (Plotly.js charts)
 - `src/referee_dashboard/static/css/nord.css` — Nord theme overrides for Bootstrap
 - `scripts/import_notion.py` — import games from Notion CSV export
 
@@ -34,6 +35,7 @@
 - Season derived from game_date year (March–October within one calendar year)
 - Currency formatted as German locale (comma decimal, dot thousands): `1.234,56 €`
 - htmx for partial page updates (HX-Request header → return partial HTML)
+- Dashboard widgets loaded via htmx lazy-loading (hx-trigger="load")
 - ruff for formatting and linting
 - `just dev` for development, `just serve` for production
 

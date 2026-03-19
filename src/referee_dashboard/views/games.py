@@ -169,11 +169,13 @@ def _position_chart(positions):
     chart_id = "position-chart"
     script = (
         f"<script>"
-        f"(function() {{"
-        f"  var d = {chart_data};"
-        f'  Plotly.newPlot("{chart_id}", d.data, d.layout,'
-        f"    {{responsive: true, displayModeBar: false}});"
-        f"}})();"
+        f"(function render(){{"
+        f"  if(typeof Plotly==='undefined'){{setTimeout(render,50);return}}"
+        f"  var d={chart_data};"
+        f"  d.layout.font.color=getComputedStyle(document.body).color;"
+        f'  Plotly.newPlot("{chart_id}",d.data,d.layout,'
+        f"    {{responsive:true,displayModeBar:false}});"
+        f"}})()"
         f"</script>"
     )
 
