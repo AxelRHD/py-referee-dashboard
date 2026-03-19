@@ -4,6 +4,8 @@ from htpy import (
     h1,
     h6,
     i,
+    input,
+    label,
     option,
     select,
     small,
@@ -118,9 +120,12 @@ def dashboard_page(seasons, default_season):
             filterPosition: '',
             loading: true,
             view: 'year',
+            onlyCompleted: false,
+            today: new Date().toISOString().slice(0, 10),
 
             get filtered() {{
                 return this.games.filter(g => {{
+                    if (this.onlyCompleted && g.date >= this.today) return false;
                     if (this.filterLeague && g.league_id != this.filterLeague) return false;
                     if (this.filterPosition && g.position !== this.filterPosition) return false;
                     return true;
@@ -145,6 +150,7 @@ def dashboard_page(seasons, default_season):
                 this.$watch('season', () => this.loadSeason());
                 this.$watch('filtered', () => this.renderCharts());
                 this.$watch('filterLeague', () => this.renderPositionChart());
+                this.$watch('onlyCompleted', () => this.renderCharts());
                 window.addEventListener('theme-changed', () => {{
                     this.$nextTick(() => this.renderCharts());
                 }});
@@ -199,6 +205,7 @@ def dashboard_page(seasons, default_season):
             renderPositionChart() {{
                 var colors = {NORD_COLORS_JS};
                 var games = this.games.filter(g => {{
+                    if (this.onlyCompleted && g.date >= this.today) return false;
                     if (this.filterLeague && g.league_id != this.filterLeague) return false;
                     return true;
                 }});
@@ -266,6 +273,7 @@ def dashboard_page(seasons, default_season):
                 var colors = {NORD_COLORS_JS};
                 var monthLabels = {MONTH_LABELS_JS};
                 var games = this.games.filter(g => {{
+                    if (this.onlyCompleted && g.date >= this.today) return false;
                     if (this.filterPosition && g.position !== this.filterPosition) return false;
                     return true;
                 }});
@@ -403,6 +411,17 @@ def dashboard_page(seasons, default_season):
                         option({":value": "p", "x-text": "p"}),
                     ],
                 ),
+                div(".form-check.mb-3")[
+                    input(
+                        "#only-completed.form-check-input",
+                        type="checkbox",
+                        **{"x-model": "onlyCompleted"},
+                    ),
+                    label(
+                        ".form-check-label.small",
+                        for_="only-completed",
+                    )["Nur geleitet"],
+                ],
                 div(".d-flex.flex-column.gap-2")[
                     _stat_card("Spiele", "stats.count"),
                     _stat_card("Gesamt", "eur(stats.total)"),
