@@ -121,6 +121,38 @@
     --bs-btn-hover-border-color: #BF616A;
 }
 
+/* ── Dash Dropdowns (dark mode) ────────────────────────── */
+
+[data-bs-theme="dark"] [data-dash-is-loading],
+[data-bs-theme="dark"] div[id*="filter-"] > div {
+    background-color: #3B4252 !important;
+    border-color: #4C566A !important;
+    color: #D8DEE9 !important;
+}
+
+[data-bs-theme="dark"] div[id*="filter-"] input {
+    background-color: #3B4252 !important;
+    color: #D8DEE9 !important;
+}
+
+[data-bs-theme="dark"] div[id*="filter-"] svg {
+    fill: #D8DEE9 !important;
+}
+
+[data-bs-theme="dark"] .dash-options-list-option-wrapper {
+    background-color: #3B4252 !important;
+    color: #D8DEE9 !important;
+}
+
+[data-bs-theme="dark"] .dash-options-list-option-wrapper:hover {
+    background-color: #434C5E !important;
+}
+
+[data-bs-theme="dark"] [role="listbox"] {
+    background-color: #3B4252 !important;
+    border-color: #4C566A !important;
+}
+
 /* ── Tables ───────────────────────────────────────────── */
 
 .table-sm {
