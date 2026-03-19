@@ -1,0 +1,13 @@
+services:
+  referee-app:
+    build: .
+    ports:
+      - "3003:3003"
+    volumes:
+      - referee-data:/app/data
+    environment:
+      - REFEREE_DB=/app/data/referee.db
+    restart: unless-stopped
+
+volumes:
+  referee-data:

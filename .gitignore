@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+referee.db
+*.db-wal
+*.db-shm
+.ruff_cache/
+.env
+*.zip

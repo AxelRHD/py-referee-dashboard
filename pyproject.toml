@@ -1,0 +1,37 @@
+[project]
+name = "referee-dashboard"
+version = "0.1.0"
+description = "Self-hosted dashboard for managing American Football referee assignments"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1",
+    "dash>=3.0",
+    "htpy>=0.9",
+    "plotly>=6.0",
+    "granian>=1.7",
+    "python-dotenv>=1.0",
+    "flask-sqlalchemy>=3.1",
+]
+
+[project.scripts]
+referee-dashboard = "referee_dashboard.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.9",
+]
