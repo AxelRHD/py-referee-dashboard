@@ -1,4 +1,4 @@
-from htpy import a, body, button, div, head, html, link, meta, nav, script, title
+from htpy import a, body, button, div, head, html, i, link, meta, nav, script, title
 from markupsafe import Markup
 
 # Inline script to set theme before render to avoid flash
@@ -19,6 +19,7 @@ document.addEventListener('alpine:init', () => {
             var theme = this.dark ? 'dark' : 'light';
             document.documentElement.setAttribute('data-bs-theme', theme);
             localStorage.setItem('theme', theme);
+            window.dispatchEvent(new Event('theme-changed'));
         }
     }));
 });
@@ -84,7 +85,7 @@ def _theme_toggle():
             **{"@click": "toggle()"},
             title="Theme wechseln",
         )[
-            Markup('<i x-show="dark" class="bi bi-sun"></i>'),
-            Markup('<i x-show="!dark" class="bi bi-moon"></i>'),
+            i(".bi.bi-sun", {"x-show": "dark"}),
+            i(".bi.bi-moon", {"x-show": "!dark"}),
         ],
     ]

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from flask import Flask
-from markupsafe import Markup
+from htpy import h1, p
 
 from referee_dashboard.config import load_config
 from referee_dashboard.db import init_app
@@ -35,8 +35,8 @@ def create_app():
     def index():
         page = base_page(
             "Start",
-            Markup("<h1>Referee Dashboard</h1>"),
-            Markup("<p>Willkommen. Verwende die Navigation oben.</p>"),
+            h1["Referee Dashboard"],
+            p["Willkommen. Verwende die Navigation oben."],
         )
         return str(page)
 

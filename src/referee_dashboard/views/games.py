@@ -1,6 +1,6 @@
 import json
 
-from htpy import a, div, h1, li, nav, option, select, small, span, td, tr
+from htpy import a, div, h1, li, nav, option, select, small, span, td, tr, ul
 from htpy import form as html_form
 from htpy import input as html_input
 from markupsafe import Markup
@@ -172,9 +172,11 @@ def _position_chart(positions):
         f"(function render(){{"
         f"  if(typeof Plotly==='undefined'){{setTimeout(render,50);return}}"
         f"  var d={chart_data};"
-        f"  d.layout.font.color=getComputedStyle(document.body).color;"
+        f"  function draw(){{d.layout.font.color=getComputedStyle(document.body).color;"
         f'  Plotly.newPlot("{chart_id}",d.data,d.layout,'
-        f"    {{responsive:true,displayModeBar:false}});"
+        f"    {{responsive:true,displayModeBar:false}});}}"
+        f"  draw();"
+        f"  window.addEventListener('theme-changed',()=>setTimeout(draw,50));"
         f"}})()"
         f"</script>"
     )
@@ -230,11 +232,7 @@ def _pagination(page, total_pages, filters):
     else:
         items.append(li(".page-item.disabled")[span(".page-link")["»"]])
 
-    return nav[
-        Markup('<ul class="pagination pagination-sm justify-content-center">'),
-        items,
-        Markup("</ul>"),
-    ]
+    return nav[ul(".pagination.pagination-sm.justify-content-center")[items],]
 
 
 def game_table(games, stats=None, page=1, filters=None):
