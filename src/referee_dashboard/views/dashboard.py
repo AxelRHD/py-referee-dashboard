@@ -496,8 +496,9 @@ def dashboard_page(seasons, default_season):
                 return years.map(y => '\\u200b' + y);
             }},
 
-            // Tick values for overview x-axis: multiples of 5
+            // Tick values for overview x-axis: all if <=10, else multiples of 5
             yearTickVals(xl, years) {{
+                if (years.length <= 10) return xl;
                 return xl.filter((_, i) => parseInt(years[i]) % 5 === 0);
             }},
 
@@ -750,10 +751,20 @@ def dashboard_page(seasons, default_season):
 
             renderOverviewLeagues() {{
                 var colors = {NORD_COLORS_JS};
-                var games = this.overviewFiltered;
+                // Ignore league filter for this chart
+                var games = this.overviewGames.filter(g => {{
+                    if (this.onlyCompleted && g.date >= this.today) return false;
+                    if (this.ovFilterPositions.length
+                        && !this.ovFilterPositions.includes(g.position)) return false;
+                    if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
+                    if (this.ovYearTo && g.year > this.ovYearTo) return false;
+                    return true;
+                }});
                 if (!games.length) return;
 
-                var years = this.overviewYears;
+                var seenYears = new Set();
+                games.forEach(g => seenYears.add(g.year));
+                var years = [...seenYears].sort();
                 var xl = this.yearLabels(years);
 
                 // Get unique leagues, sorted by total count descending
