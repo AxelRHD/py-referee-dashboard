@@ -111,12 +111,12 @@ just --list
 
 ## Deployment
 
-The app is deployed as a Docker container on an OpenMediaVault server.
+The app is designed for self-hosting, e.g. on an OpenMediaVault (OMV) server with Docker.
 
 ### Architecture
 
 ```
-Local (WSL)                          Server (mimir)
+Local (WSL)                          Server (e.g. OMV)
 ┌──────────────┐                     ┌──────────────────────────┐
 │ docker build │──docker save/load──▶│ Docker image             │
 │              │                     │                          │
