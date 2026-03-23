@@ -54,7 +54,7 @@ def base_page(page_title: str, *content, container: str = "container"):
             meta(charset="utf-8"),
             meta(name="viewport", content="width=device-width, initial-scale=1"),
             title[f"{page_title} — Referee Dashboard"],
-            link(rel="icon", type="image/png", href="/static/favicon.png"),
+            link(rel="icon", type="image/png", href="/static/pfeife.png"),
             link(
                 rel="stylesheet",
                 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -97,7 +97,7 @@ def _navbar():
     return nav(".navbar.navbar-expand-lg.sticky-top")[
         div(".container")[
             a(".navbar-brand.d-flex.align-items-center", href="/")[
-                img(src="/static/favicon.png", alt="", width="28", height="28", class_="me-2"),
+                img(src="/static/pfeife.png", alt="", width="28", height="28", class_="me-2"),
                 "Referee Dashboard",
             ],
             div(".d-flex.align-items-center")[
