@@ -463,7 +463,7 @@ def dashboard_page(seasons, default_season):
                         categoryorder: 'array', categoryarray: leagues,
                         ticksuffix: '  ',
                     }},
-                    margin: {{t: 10, b: 30, l: 160, r: 30}},
+                    margin: {{t: 10, b: 30, l: 100, r: 30}},
                     annotations: this.stackAnnotations(leagues, leagueTotals, true),
                 }}), {{responsive: true, displayModeBar: false}});
             }},

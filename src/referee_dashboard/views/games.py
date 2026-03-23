@@ -343,7 +343,7 @@ def game_form(
         vals = {}
 
     title = "Spiel bearbeiten" if is_edit else "Neues Spiel"
-    action = f"/games/{game.id}" if is_edit else "/games"
+    action = f"/games/{game.id}/edit" if is_edit else "/games/new"
 
     team_options = [(str(t.id), t.name) for t in teams]
     league_options = [(str(lg.id), lg.name) for lg in leagues]

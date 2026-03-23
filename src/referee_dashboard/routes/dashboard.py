@@ -54,7 +54,7 @@ def api_overview():
 
     league_ids = {g.league_id for g in games}
     available_leagues = [
-        {"id": lg.id, "name": lg.short_name or lg.name}
+        {"id": lg.id, "name": lg.name}
         for lg in League.query.filter(League.id.in_(league_ids))
         .order_by(League.sorter, League.name)
         .all()
@@ -113,7 +113,7 @@ def api_data(season):
     # Available filter options for this season
     league_ids = {g.league_id for g in games}
     available_leagues = [
-        {"id": lg.id, "name": lg.short_name or lg.name}
+        {"id": lg.id, "name": lg.name}
         for lg in League.query.filter(League.id.in_(league_ids))
         .order_by(League.sorter, League.name)
         .all()

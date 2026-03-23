@@ -63,7 +63,7 @@ def team_form(team=None, errors=None, data=None):
         vals = {"is_active": 1, "state": "Baden-Württemberg"}
 
     title = "Team bearbeiten" if is_edit else "Neues Team"
-    action = f"/teams/{team.id}" if is_edit else "/teams"
+    action = f"/teams/{team.id}/edit" if is_edit else "/teams/new"
 
     return [
         h1[title],

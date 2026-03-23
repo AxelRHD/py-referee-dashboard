@@ -61,7 +61,7 @@ def league_form(league=None, errors=None, data=None):
         vals = {}
 
     title = "Liga bearbeiten" if is_edit else "Neue Liga"
-    action = f"/leagues/{league.id}" if is_edit else "/leagues"
+    action = f"/leagues/{league.id}/edit" if is_edit else "/leagues/new"
 
     return [
         h1[title],
