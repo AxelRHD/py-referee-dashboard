@@ -10,4 +10,5 @@ referee.db
 .env
 *.zip
 *.png
+!src/referee_dashboard/static/favicon.png
 *.jpg

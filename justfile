@@ -79,10 +79,12 @@ appdata_dir := "/mnt/data/docker/appdata/referee-dashboard"
 build:
     docker build -t referee-dashboard .
 
-# Upload source code to mimir
+# Sync source code + version to mimir (deletes removed files)
 [group('deploy')]
 deploy-src:
-    scp -r src/ {{remote}}:{{appdata_dir}}/
+    git describe --tags --always > src/VERSION
+    rsync -avz --delete src/ {{remote}}:{{appdata_dir}}/src/
+    rm src/VERSION
 
 # Push image to mimir
 [group('deploy')]

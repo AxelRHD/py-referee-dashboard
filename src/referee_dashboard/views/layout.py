@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from flask import get_flashed_messages
-from htpy import a, body, button, div, head, html, i, link, meta, nav, script, title
+from htpy import a, body, button, div, head, html, i, img, link, meta, nav, script, small, title
 from markupsafe import Markup
 
 # Inline script to set theme before render to avoid flash
@@ -52,6 +54,7 @@ def base_page(page_title: str, *content, container: str = "container"):
             meta(charset="utf-8"),
             meta(name="viewport", content="width=device-width, initial-scale=1"),
             title[f"{page_title} — Referee Dashboard"],
+            link(rel="icon", type="image/png", href="/static/favicon.png"),
             link(
                 rel="stylesheet",
                 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -82,10 +85,21 @@ def base_page(page_title: str, *content, container: str = "container"):
     ]
 
 
+def _get_version() -> str:
+    """Read version from VERSION file."""
+    for p in [Path("/data/src/VERSION"), Path(__file__).parents[2] / "VERSION"]:
+        if p.exists():
+            return p.read_text().strip()
+    return "dev"
+
+
 def _navbar():
     return nav(".navbar.navbar-expand-lg.sticky-top")[
         div(".container")[
-            a(".navbar-brand", href="/")["Referee Dashboard"],
+            a(".navbar-brand.d-flex.align-items-center", href="/")[
+                img(src="/static/favicon.png", alt="", width="28", height="28", class_="me-2"),
+                "Referee Dashboard",
+            ],
             div(".d-flex.align-items-center")[
                 div(".navbar-nav.me-auto")[
                     a(".nav-link", href="/dashboard/")["Dashboard"],
@@ -95,6 +109,7 @@ def _navbar():
                     a(".nav-link", href="/data")["Datenverwaltung"],
                 ],
                 _theme_toggle(),
+                small(".text-muted.ms-2", style="font-size:0.7rem")[_get_version()],
             ],
         ]
     ]
