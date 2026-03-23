@@ -1,13 +1,17 @@
 services:
-  referee-app:
-    build: .
-    ports:
-      - "3003:3003"
-    volumes:
-      - referee-data:/app/data
-    environment:
-      - REFEREE_DB=/app/data/referee.db
+  referee-dashboard:
+    image: referee-dashboard
+    container_name: referee-dashboard
     restart: unless-stopped
-
-volumes:
-  referee-data:
+    ports:
+      - "3001:3000"
+    volumes:
+      - CHANGE_TO_COMPOSE_DATA_PATH/referee-dashboard:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      - DB_PATH=/data/referee.db
+      - SECRET_KEY=${SECRET_KEY}

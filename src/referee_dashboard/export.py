@@ -84,13 +84,14 @@ def _escape(val) -> str:
     return "'" + str(val).replace("'", "''") + "'"
 
 
-def _inserts(table: str, columns: list[str], rows: list[list]) -> str:
+def _inserts(table: str, columns: list[str], rows: list[list], or_ignore: bool = False) -> str:
     """Generate INSERT statements."""
+    keyword = "INSERT OR IGNORE" if or_ignore else "INSERT"
     lines = []
     for row in rows:
         vals = ", ".join(_escape(v) for v in row)
         cols = ", ".join(columns)
-        lines.append(f"INSERT INTO {table} ({cols}) VALUES ({vals});")
+        lines.append(f"{keyword} INTO {table} ({cols}) VALUES ({vals});")
     return "\n".join(lines)
 
 
@@ -167,7 +168,8 @@ def full_dump() -> str:
         )
         row = cursor.fetchone()
         if row and row[0]:
-            parts.append(f"{row[0]};")
+            sql = row[0].replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS", 1)
+            parts.append(f"{sql};")
 
     # Collect INSERT statements in FK order
     for table in table_order:
@@ -176,7 +178,7 @@ def full_dump() -> str:
         for row in cursor.fetchall():
             vals = ", ".join(_escape(v) for v in row)
             col_str = ", ".join(cols)
-            parts.append(f"INSERT INTO {table} ({col_str}) VALUES ({vals});")
+            parts.append(f"INSERT OR IGNORE INTO {table} ({col_str}) VALUES ({vals});")
 
     parts.append("COMMIT;")
     raw.close()

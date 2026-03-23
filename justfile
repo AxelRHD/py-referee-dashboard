@@ -62,7 +62,43 @@ db-import csv:
 # Production
 # ============================================================
 
-# Start production server
+# Start production server locally
 [group('production')]
 serve:
     uv run granian --interface wsgi --host 0.0.0.0 --port 3003 referee_dashboard.app:create_app
+
+# ============================================================
+# Deployment
+# ============================================================
+
+remote := "mimir"
+appdata_dir := "/mnt/data/docker/appdata/referee-dashboard"
+
+# Build Docker image locally
+[group('deploy')]
+build:
+    docker build -t referee-dashboard .
+
+# Upload source code to mimir
+[group('deploy')]
+deploy-src:
+    scp -r src/ {{remote}}:{{appdata_dir}}/
+
+# Push image to mimir
+[group('deploy')]
+deploy-image:
+    docker save referee-dashboard | ssh {{remote}} docker load
+
+# Full deploy: build + push image + upload source
+[group('deploy')]
+deploy: build deploy-image deploy-src
+
+# Show container logs
+[group('deploy')]
+deploy-logs:
+    gosctl run logs
+
+# Show container status
+[group('deploy')]
+deploy-status:
+    gosctl run status

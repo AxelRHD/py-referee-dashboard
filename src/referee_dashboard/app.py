@@ -35,6 +35,10 @@ def create_app():
     def index():
         return redirect(url_for("dashboard.index"))
 
+    @app.route("/health")
+    def health():
+        return "ok"
+
     return app
 
 

@@ -24,9 +24,12 @@ def sanitize_sql(text: str) -> tuple[list[str], list[str]]:
     # Split on semicolons, keeping each statement
     raw_stmts = [s.strip() for s in text.split(";") if s.strip()]
 
+    # Transaction wrappers to silently skip (from dumps)
+    skip_re = re.compile(r"^\s*(BEGIN|COMMIT|ROLLBACK)", re.IGNORECASE)
+
     for stmt in raw_stmts:
-        # Skip comments
-        if stmt.startswith("--"):
+        # Skip comments and transaction wrappers
+        if stmt.startswith("--") or skip_re.match(stmt):
             continue
 
         if BLOCKED_KEYWORDS.match(stmt):
