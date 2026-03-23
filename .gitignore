@@ -11,4 +11,5 @@ referee.db
 *.zip
 *.png
 !src/referee_dashboard/static/pfeife.png
+!docs/*.png
 *.jpg
