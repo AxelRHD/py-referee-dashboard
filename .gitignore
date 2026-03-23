@@ -9,3 +9,5 @@ referee.db
 .ruff_cache/
 .env
 *.zip
+*.png
+*.jpg

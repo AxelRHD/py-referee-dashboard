@@ -23,7 +23,7 @@ class Team(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
-    state = db.Column(db.String, default="")
+    state = db.Column(db.String, default="Baden-Württemberg")
     is_active = db.Column(db.Integer, nullable=False, default=1)
     remarks = db.Column(db.String, default="")
     created_at = db.Column(db.String, nullable=False, default=_now)
