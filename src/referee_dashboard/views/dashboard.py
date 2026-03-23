@@ -157,6 +157,14 @@ def dashboard_page(seasons, default_season):
             overviewLoaded: false,
             ovFilterLeague: '',
             ovFilterPositions: [],
+            ovYearFrom: '',
+            ovYearTo: '',
+
+            get allOverviewYears() {{
+                var seen = new Set();
+                this.overviewGames.forEach(g => seen.add(g.year));
+                return [...seen].sort().reverse();
+            }},
 
             get overviewFiltered() {{
                 return this.overviewGames.filter(g => {{
@@ -164,6 +172,8 @@ def dashboard_page(seasons, default_season):
                     if (this.ovFilterLeague && g.league_id != this.ovFilterLeague) return false;
                     if (this.ovFilterPositions.length
                         && !this.ovFilterPositions.includes(g.position)) return false;
+                    if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
+                    if (this.ovYearTo && g.year > this.ovYearTo) return false;
                     return true;
                 }});
             }},
@@ -175,6 +185,8 @@ def dashboard_page(seasons, default_season):
                     if (this.ovFilterLeague && g.league_id != this.ovFilterLeague) return false;
                     if (this.ovFilterPositions.length > 1
                         && !this.ovFilterPositions.includes(g.position)) return false;
+                    if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
+                    if (this.ovYearTo && g.year > this.ovYearTo) return false;
                     return true;
                 }});
             }},
@@ -256,6 +268,18 @@ def dashboard_page(seasons, default_season):
                 }});
                 this.$watch('ovFilterPositions', (v) => {{
                     localStorage.setItem('db_ovFilterPositions', JSON.stringify(v));
+                    if (this.view === 'overview') {{
+                        this.$nextTick(() => this.renderOverviewCharts());
+                    }}
+                }});
+                this.$watch('ovYearFrom', (v) => {{
+                    localStorage.setItem('db_ovYearFrom', v);
+                    if (this.view === 'overview') {{
+                        this.$nextTick(() => this.renderOverviewCharts());
+                    }}
+                }});
+                this.$watch('ovYearTo', (v) => {{
+                    localStorage.setItem('db_ovYearTo', v);
                     if (this.view === 'overview') {{
                         this.$nextTick(() => this.renderOverviewCharts());
                     }}
@@ -458,6 +482,11 @@ def dashboard_page(seasons, default_season):
                 this.ovFilterPositions = JSON.parse(
                     localStorage.getItem('db_ovFilterPositions') || '[]'
                 );
+                var allYrs = this.allOverviewYears;
+                var maxY = allYrs[0] || '';
+                var minDefault = maxY ? '' + (parseInt(maxY) - 9) : '';
+                this.ovYearFrom = localStorage.getItem('db_ovYearFrom') || minDefault;
+                this.ovYearTo = localStorage.getItem('db_ovYearTo') || maxY;
                 this.overviewLoaded = true;
                 this.$nextTick(() => this.renderOverviewCharts());
             }},
@@ -480,6 +509,8 @@ def dashboard_page(seasons, default_season):
                 this.renderOverviewFeePerYear();
                 this.renderOverviewAvgPerGame();
                 this.renderOverviewKmPerYear();
+                this.renderOverviewSankey();
+                this.renderOverviewLeagues();
             }},
 
             renderOverviewGamesPerYear() {{
@@ -658,6 +689,106 @@ def dashboard_page(seasons, default_season):
                 }}), {{responsive: true, displayModeBar: false}});
             }},
 
+            renderOverviewSankey() {{
+                var colors = {NORD_COLORS_JS};
+                var games = this.overviewFiltered;
+                if (!games.length) return;
+
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+                var positions = this.overviewPositions.filter(
+                    p => games.some(g => g.position === p)
+                );
+
+                // Count per position per year
+                var counts = {{}};
+                games.forEach(g => {{
+                    var key = g.position + '|' + g.year;
+                    counts[key] = (counts[key] || 0) + 1;
+                }});
+
+                // Heatmap: years on X, positions on Y, color = game count
+                var z = positions.map(p =>
+                    years.map(y => counts[p + '|' + y] || 0)
+                );
+                var annotations = [];
+                positions.forEach((p, pi) => {{
+                    years.forEach((y, yi) => {{
+                        var val = counts[p + '|' + y] || 0;
+                        if (val > 0) {{
+                            annotations.push({{
+                                x: xl[yi], y: p,
+                                text: '' + val,
+                                showarrow: false,
+                                font: {{color: val > 8 ? '#2E3440' : '#ECEFF4', size: 11}},
+                            }});
+                        }}
+                    }});
+                }});
+
+                Plotly.newPlot('chart-overview-sankey', [{{
+                    x: xl, y: positions, z: z,
+                    type: 'heatmap',
+                    colorscale: [
+                        [0, '#3B4252'],
+                        [0.3, '#5E81AC'],
+                        [0.6, '#88C0D0'],
+                        [0.8, '#D08770'],
+                        [1, '#BF616A'],
+                    ],
+                    showscale: false,
+                    hoverongaps: false,
+                    xgap: 2,
+                    ygap: 2,
+                }}], this.baseLayout(Math.max(300, positions.length * 45), {{
+                    margin: {{t: 10, b: 30, l: 40, r: 10}},
+                    xaxis: {{tickvals: xl, side: 'bottom'}},
+                    yaxis: {{autorange: 'reversed'}},
+                    annotations: annotations,
+                }}), {{responsive: true, displayModeBar: false}});
+            }},
+
+            renderOverviewLeagues() {{
+                var colors = {NORD_COLORS_JS};
+                var games = this.overviewFiltered;
+                if (!games.length) return;
+
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+
+                // Get unique leagues, sorted by total count descending
+                var leagueTotals = {{}};
+                games.forEach(g => {{
+                    leagueTotals[g.league] = (leagueTotals[g.league] || 0) + 1;
+                }});
+                var leagues = Object.keys(leagueTotals)
+                    .sort((a, b) => leagueTotals[b] - leagueTotals[a]);
+
+                // Count per league per year
+                var counts = {{}};
+                games.forEach(g => {{
+                    var key = g.league + '|' + g.year;
+                    counts[key] = (counts[key] || 0) + 1;
+                }});
+
+                var traces = years.map((y, i) => ({{
+                    x: leagues,
+                    y: leagues.map(lg => counts[lg + '|' + y] || 0),
+                    type: 'bar',
+                    name: y,
+                    marker: {{color: colors[i % colors.length]}},
+                }}));
+
+                Plotly.newPlot('chart-overview-leagues', traces,
+                    this.baseLayout(350, {{
+                    barmode: 'stack',
+                    showlegend: true,
+                    legend: {{font: {{size: 10}}, traceorder: 'normal'}},
+                    margin: {{t: 10, b: 80, l: 40, r: 10}},
+                    xaxis: {{tickangle: -45}},
+                }}), {{responsive: true, displayModeBar: false}});
+            }},
+
             renderFeeBar(chartId, valueFn) {{
                 var colors = {NORD_COLORS_JS};
                 var months = {MONTH_LABELS_JS};
@@ -830,6 +961,28 @@ def dashboard_page(seasons, default_season):
                         option({":value": "'' + lg.id", "x-text": "lg.name"})
                     ],
                 ),
+                div(".mb-3")[
+                    small(".text-muted.d-block.mb-1")["Zeitraum"],
+                    div(".d-flex.gap-1.align-items-center")[
+                        select(
+                            ".form-select.form-select-sm",
+                            **{"x-model": "ovYearFrom"},
+                        )[
+                            template({"x-for": "y in allOverviewYears", ":key": "'from'+y"})[
+                                option({":value": "y", "x-text": "y"}),
+                            ],
+                        ],
+                        small(".text-muted")["–"],
+                        select(
+                            ".form-select.form-select-sm",
+                            **{"x-model": "ovYearTo"},
+                        )[
+                            template({"x-for": "y in allOverviewYears", ":key": "'to'+y"})[
+                                option({":value": "y", "x-text": "y"}),
+                            ],
+                        ],
+                    ],
+                ],
                 div(".form-check.mb-3")[
                     input(
                         "#only-completed-overview.form-check-input",
@@ -846,8 +999,11 @@ def dashboard_page(seasons, default_season):
                     type="button",
                     **{
                         "@click": "ovFilterLeague = ''; ovFilterPositions = [];"
+                        " ovYearTo = allOverviewYears[0] || '';"
+                        " ovYearFrom = ovYearTo ? '' + (parseInt(ovYearTo) - 9) : '';"
                         " onlyCompleted = true",
-                        "x-show": "ovFilterLeague || ovFilterPositions.length || !onlyCompleted",
+                        "x-show": "ovFilterLeague || ovFilterPositions.length"
+                        " || ovYearFrom || ovYearTo || !onlyCompleted",
                     },
                 )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
                 div(".d-flex.flex-column.gap-2")[
@@ -898,10 +1054,13 @@ def dashboard_page(seasons, default_season):
             "overview-games-body",
             "bi.bi-bar-chart-fill",
             "Einsätze",
+            div(".row.g-3.mb-3")[
+                div(".col-md-6")[_widget_card("Spiele pro Jahr", "chart-overview-games")],
+                div(".col-md-6")[_widget_card("Positionstrend", "chart-overview-trend")],
+            ],
             div(".row.g-3")[
-                div(".col-md-4")[_widget_card("Spiele pro Jahr", "chart-overview-games")],
-                div(".col-md-4")[_widget_card("Positionstrend", "chart-overview-trend")],
                 div(".col-md-4")[_widget_card("Positionsverteilung", "chart-overview-pie")],
+                div(".col-md-8")[_widget_card("Spiele pro Liga", "chart-overview-leagues")],
             ],
         ),
         _collapsible_section(
@@ -912,6 +1071,14 @@ def dashboard_page(seasons, default_season):
                 div(".col-md-4")[_widget_card("Vergütung pro Jahr", "chart-overview-fee")],
                 div(".col-md-4")[_widget_card("Durchschnitt pro Spiel", "chart-overview-avg")],
                 div(".col-md-4")[_widget_card("Kilometer pro Jahr", "chart-overview-km")],
+            ],
+        ),
+        _collapsible_section(
+            "overview-flow-body",
+            "bi.bi-diagram-3",
+            "Verteilung",
+            div(".row.g-3")[
+                div(".col-12")[_widget_card("Positionen pro Jahr", "chart-overview-sankey")],
             ],
         ),
     ]

@@ -76,7 +76,7 @@ def base_page(page_title: str, *content, container: str = "container"):
             ),
             script(src="https://cdn.jsdelivr.net/npm/htmx.org@2/dist/htmx.min.js"),
             script(
-                src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2/plotly-basic.min.js",
+                src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2/plotly.min.js",
             ),
             # alpine:init listeners must come before Alpine.js
             _theme_toggle_script,
