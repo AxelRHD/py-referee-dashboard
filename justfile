@@ -9,7 +9,7 @@ default:
 # Start dev server with auto-reload
 [group('dev')]
 dev:
-    uv run flask --app referee_dashboard.app:create_app run --port 3003 --debug
+    uv run referee-dashboard
 
 # ============================================================
 # Setup & Qualität
@@ -65,7 +65,7 @@ db-import csv:
 # Start production server locally
 [group('production')]
 serve:
-    uv run granian --interface wsgi --host 0.0.0.0 --port 3003 referee_dashboard.app:create_app
+    uv run granian --interface wsgi --host 0.0.0.0 --port ${PORT:-8080} --factory referee_dashboard.app:create_app
 
 # ============================================================
 # Deployment

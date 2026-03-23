@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 @dataclass
 class Config:
     DB_PATH: str = "referee.db"
-    PORT: int = 3003
+    PORT: int = 8080
     DEBUG: bool = False
     SECRET_KEY: str = "change-me-in-production"
 

@@ -59,7 +59,7 @@ just sync
 just dev
 ```
 
-The app will be available at [http://localhost:3003](http://localhost:3003).
+The app will be available at [http://localhost:8080](http://localhost:8080).
 
 On first start, the database is created automatically with seeded referee positions (R, CJ, U, LJ, LM, BJ, FJ, SJ).
 
@@ -70,7 +70,7 @@ Configuration via `.env` file in the project root:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DB_PATH` | `referee.db` | Path to SQLite database file |
-| `PORT` | `3003` | Development server port |
+| `PORT` | `8080` | Server port |
 | `DEBUG` | `false` | Enable Flask debug mode |
 | `SECRET_KEY` | `change-me-in-production` | Flask session secret key |
 
