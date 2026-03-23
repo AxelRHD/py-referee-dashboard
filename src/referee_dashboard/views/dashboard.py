@@ -747,9 +747,7 @@ def dashboard_page(seasons, default_season):
                     div(
                         ".d-flex.flex-wrap.gap-1",
                     )[
-                        template(
-                            {"x-for": "p in availablePositions", ":key": "p"}
-                        )[
+                        template({"x-for": "p in availablePositions", ":key": "p"})[
                             button(
                                 ".btn.btn-sm",
                                 type="button",
@@ -785,10 +783,8 @@ def dashboard_page(seasons, default_season):
                     ".btn.btn-outline-secondary.btn-sm.w-100.mb-3",
                     type="button",
                     **{
-                        "@click": "filterLeague = ''; filterPositions = [];"
-                        " onlyCompleted = true",
-                        "x-show": "filterLeague || filterPositions.length"
-                        " || !onlyCompleted",
+                        "@click": "filterLeague = ''; filterPositions = []; onlyCompleted = true",
+                        "x-show": "filterLeague || filterPositions.length || !onlyCompleted",
                     },
                 )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
                 div(".d-flex.flex-column.gap-2")[
@@ -813,9 +809,7 @@ def dashboard_page(seasons, default_season):
                     div(
                         ".d-flex.flex-wrap.gap-1",
                     )[
-                        template(
-                            {"x-for": "p in overviewPositions", ":key": "p"}
-                        )[
+                        template({"x-for": "p in overviewPositions", ":key": "p"})[
                             button(
                                 ".btn.btn-sm",
                                 type="button",
@@ -832,9 +826,9 @@ def dashboard_page(seasons, default_season):
                 _alpine_select(
                     "Liga",
                     "ovFilterLeague",
-                    template(
-                        {"x-for": "lg in overviewLeagues", ":key": "lg.id"}
-                    )[option({":value": "'' + lg.id", "x-text": "lg.name"})],
+                    template({"x-for": "lg in overviewLeagues", ":key": "lg.id"})[
+                        option({":value": "'' + lg.id", "x-text": "lg.name"})
+                    ],
                 ),
                 div(".form-check.mb-3")[
                     input(
@@ -853,8 +847,7 @@ def dashboard_page(seasons, default_season):
                     **{
                         "@click": "ovFilterLeague = ''; ovFilterPositions = [];"
                         " onlyCompleted = true",
-                        "x-show": "ovFilterLeague || ovFilterPositions.length"
-                        " || !onlyCompleted",
+                        "x-show": "ovFilterLeague || ovFilterPositions.length || !onlyCompleted",
                     },
                 )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
                 div(".d-flex.flex-column.gap-2")[
@@ -906,15 +899,9 @@ def dashboard_page(seasons, default_season):
             "bi.bi-bar-chart-fill",
             "Einsätze",
             div(".row.g-3")[
-                div(".col-md-4")[
-                    _widget_card("Spiele pro Jahr", "chart-overview-games")
-                ],
-                div(".col-md-4")[
-                    _widget_card("Positionstrend", "chart-overview-trend")
-                ],
-                div(".col-md-4")[
-                    _widget_card("Positionsverteilung", "chart-overview-pie")
-                ],
+                div(".col-md-4")[_widget_card("Spiele pro Jahr", "chart-overview-games")],
+                div(".col-md-4")[_widget_card("Positionstrend", "chart-overview-trend")],
+                div(".col-md-4")[_widget_card("Positionsverteilung", "chart-overview-pie")],
             ],
         ),
         _collapsible_section(
@@ -922,15 +909,9 @@ def dashboard_page(seasons, default_season):
             "bi.bi-currency-euro",
             "Vergütung",
             div(".row.g-3")[
-                div(".col-md-4")[
-                    _widget_card("Vergütung pro Jahr", "chart-overview-fee")
-                ],
-                div(".col-md-4")[
-                    _widget_card("Durchschnitt pro Spiel", "chart-overview-avg")
-                ],
-                div(".col-md-4")[
-                    _widget_card("Kilometer pro Jahr", "chart-overview-km")
-                ],
+                div(".col-md-4")[_widget_card("Vergütung pro Jahr", "chart-overview-fee")],
+                div(".col-md-4")[_widget_card("Durchschnitt pro Spiel", "chart-overview-avg")],
+                div(".col-md-4")[_widget_card("Kilometer pro Jahr", "chart-overview-km")],
             ],
         ),
     ]

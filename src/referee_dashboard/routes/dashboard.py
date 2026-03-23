@@ -73,11 +73,13 @@ def api_overview():
         for g in games
     ]
 
-    return jsonify({
-        "games": data,
-        "positions": positions,
-        "available_leagues": available_leagues,
-    })
+    return jsonify(
+        {
+            "games": data,
+            "positions": positions,
+            "available_leagues": available_leagues,
+        }
+    )
 
 
 @bp.route("/api/data/<season>")

@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, request, url_for
+from flask import Blueprint, Response, flash, redirect, request, url_for
 
 from referee_dashboard.db import db
 from referee_dashboard.models import League
@@ -59,3 +59,25 @@ def delete(id):
     db.session.commit()
     flash("Liga wurde gelöscht.", "success")
     return redirect(url_for("leagues.index"))
+
+
+@bp.route("/leagues/export/csv")
+def export_csv():
+    from referee_dashboard.export import leagues_csv
+
+    return Response(
+        leagues_csv(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=ligen.csv"},
+    )
+
+
+@bp.route("/leagues/export/sql")
+def export_sql():
+    from referee_dashboard.export import leagues_sql
+
+    return Response(
+        leagues_sql(),
+        mimetype="text/plain",
+        headers={"Content-Disposition": "attachment; filename=ligen.sql"},
+    )

@@ -1,4 +1,4 @@
-from htpy import a, h1, td, tr
+from htpy import a, div, h1, td, tr
 from htpy import form as html_form
 
 from referee_dashboard.views.components import (
@@ -17,7 +17,13 @@ def league_list(leagues):
     """View: list all leagues."""
     return [
         h1["Ligen"],
-        a(".btn.btn-success.mb-3", href="/leagues/new")["Neue Liga"],
+        div(".d-flex.justify-content-between.mb-3")[
+            a(".btn.btn-success", href="/leagues/new")["Neue Liga"],
+            div[
+                a(".btn.btn-sm.btn-outline-secondary.me-1", href="/leagues/export/csv")["CSV"],
+                a(".btn.btn-sm.btn-outline-secondary", href="/leagues/export/sql")["SQL"],
+            ],
+        ],
         data_table(
             ["#", "Name", "Bemerkungen", "Aktionen"],
             [

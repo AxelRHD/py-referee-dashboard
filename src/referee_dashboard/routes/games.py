@@ -1,6 +1,6 @@
 from collections import Counter
 
-from flask import Blueprint, flash, redirect, request, url_for
+from flask import Blueprint, Response, flash, redirect, request, url_for
 from sqlalchemy import func, or_
 
 from referee_dashboard.db import db
@@ -223,3 +223,25 @@ def delete(id):
     db.session.commit()
     flash("Spiel wurde gelöscht.", "success")
     return redirect(url_for("games.index"))
+
+
+@bp.route("/games/export/csv")
+def export_csv():
+    from referee_dashboard.export import games_csv
+
+    return Response(
+        games_csv(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=spiele.csv"},
+    )
+
+
+@bp.route("/games/export/sql")
+def export_sql():
+    from referee_dashboard.export import games_sql
+
+    return Response(
+        games_sql(),
+        mimetype="text/plain",
+        headers={"Content-Disposition": "attachment; filename=spiele.sql"},
+    )

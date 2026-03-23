@@ -20,6 +20,7 @@ def create_app():
 
     # Register blueprints
     from referee_dashboard.routes.dashboard import bp as dashboard_bp
+    from referee_dashboard.routes.data import bp as data_bp
     from referee_dashboard.routes.games import bp as games_bp
     from referee_dashboard.routes.leagues import bp as leagues_bp
     from referee_dashboard.routes.teams import bp as teams_bp
@@ -28,6 +29,7 @@ def create_app():
     app.register_blueprint(teams_bp)
     app.register_blueprint(games_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(data_bp)
 
     @app.route("/")
     def index():

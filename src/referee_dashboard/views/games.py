@@ -293,6 +293,10 @@ def game_list(games, filter_options=None, filters=None, stats=None):
         h1["Spiele"],
         div(".d-flex.justify-content-between.mb-3")[
             a(".btn.btn-success", href="/games/new")["Neues Spiel"],
+            div[
+                a(".btn.btn-sm.btn-outline-secondary.me-1", href="/games/export/csv")["CSV"],
+                a(".btn.btn-sm.btn-outline-secondary", href="/games/export/sql")["SQL"],
+            ],
         ],
         _filter_bar(filter_options, filters) if filter_options else "",
         game_table(games, stats, page, filters),

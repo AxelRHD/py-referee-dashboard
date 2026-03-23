@@ -1,4 +1,4 @@
-from htpy import a, h1, td, tr
+from htpy import a, div, h1, td, tr
 from htpy import form as html_form
 
 from referee_dashboard.validation import BUNDESLAENDER
@@ -19,7 +19,13 @@ def team_list(teams):
     """View: list all teams."""
     return [
         h1["Teams"],
-        a(".btn.btn-success.mb-3", href="/teams/new")["Neues Team"],
+        div(".d-flex.justify-content-between.mb-3")[
+            a(".btn.btn-success", href="/teams/new")["Neues Team"],
+            div[
+                a(".btn.btn-sm.btn-outline-secondary.me-1", href="/teams/export/csv")["CSV"],
+                a(".btn.btn-sm.btn-outline-secondary", href="/teams/export/sql")["SQL"],
+            ],
+        ],
         data_table(
             ["Name", "Bundesland", "Aktiv", "Bemerkungen", "Aktionen"],
             [
