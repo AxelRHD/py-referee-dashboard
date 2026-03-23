@@ -157,6 +157,26 @@ def _csv_row_to_form(row: dict, entity: str) -> dict:
     return form
 
 
+def _resolve_name_to_id(field: str, value: str) -> str:
+    """Resolve a name to a DB id for FK fields. Returns ID as string or original value."""
+    from referee_dashboard.models import League, Team
+
+    if field in ("home_team_id", "away_team_id"):
+        # If already numeric, keep as-is
+        if value.isdigit():
+            return value
+        team = Team.query.filter(Team.name == value).first()
+        return str(team.id) if team else value
+
+    if field == "league_id":
+        if value.isdigit():
+            return value
+        league = League.query.filter(League.name == value).first()
+        return str(league.id) if league else value
+
+    return value
+
+
 def _transform_csv_value(field: str, value: str) -> str:
     """Transform CSV values to form-compatible strings."""
     value = value.strip()
@@ -169,5 +189,9 @@ def _transform_csv_value(field: str, value: str) -> str:
     # Boolean fields
     if field in ("exhibition", "is_active"):
         value = "1" if value.lower() in ("ja", "1", "true", "yes", "x") else ""
+
+    # FK fields: resolve names to IDs
+    if field in ("home_team_id", "away_team_id", "league_id"):
+        value = _resolve_name_to_id(field, value)
 
     return value
