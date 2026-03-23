@@ -26,6 +26,9 @@
 ### Dashboard
 ![Dashboard](docs/screenshot-dashboard.png)
 
+### Multi-Year Overview
+![Overview](docs/screenshot-overview.png)
+
 ### Games List
 ![Games](docs/screenshot-games.png)
 
