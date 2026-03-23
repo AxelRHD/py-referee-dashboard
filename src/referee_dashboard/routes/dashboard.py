@@ -49,11 +49,12 @@ def api_overview():
     """JSON endpoint: lightweight game list for overview aggregation."""
     games = Game.query.order_by(Game.game_date).all()
     positions = [p.position for p in Position.query.order_by(Position.sorter).all()]
-    leagues_map = {lg.id: lg.name for lg in League.query.all()}
+    all_leagues = League.query.all()
+    leagues_map = {lg.id: lg.short_name or lg.name for lg in all_leagues}
 
     league_ids = {g.league_id for g in games}
     available_leagues = [
-        {"id": lg.id, "name": lg.name}
+        {"id": lg.id, "name": lg.short_name or lg.name}
         for lg in League.query.filter(League.id.in_(league_ids))
         .order_by(League.sorter, League.name)
         .all()
@@ -87,7 +88,7 @@ def api_data(season):
     """JSON endpoint: all games for a season with resolved names."""
     games = Game.query.filter(Game.game_date.like(f"{season}-%")).all()
 
-    leagues = {lg.id: lg.name for lg in League.query.all()}
+    leagues = {lg.id: lg.short_name or lg.name for lg in League.query.all()}
     positions = [p.position for p in Position.query.order_by(Position.sorter).all()]
 
     data = []
@@ -112,7 +113,7 @@ def api_data(season):
     # Available filter options for this season
     league_ids = {g.league_id for g in games}
     available_leagues = [
-        {"id": lg.id, "name": lg.name}
+        {"id": lg.id, "name": lg.short_name or lg.name}
         for lg in League.query.filter(League.id.in_(league_ids))
         .order_by(League.sorter, League.name)
         .all()

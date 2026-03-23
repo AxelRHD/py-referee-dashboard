@@ -67,8 +67,8 @@ def teams_csv() -> str:
 
 def leagues_csv() -> str:
     leagues = League.query.order_by(League.sorter, League.name).all()
-    header = ["Name", "Sortierung", "Bemerkungen"]
-    rows = [[lg.name, str(lg.sorter), lg.remarks or ""] for lg in leagues]
+    header = ["Name", "Kürzel", "Sortierung", "Bemerkungen"]
+    rows = [[lg.name, lg.short_name or "", str(lg.sorter), lg.remarks or ""] for lg in leagues]
     return _csv_string(header, rows)
 
 
@@ -140,8 +140,8 @@ def teams_sql() -> str:
 
 def leagues_sql() -> str:
     leagues = League.query.order_by(League.sorter, League.name).all()
-    columns = ["name", "sorter", "remarks"]
-    rows = [[lg.name, lg.sorter, lg.remarks] for lg in leagues]
+    columns = ["name", "short_name", "sorter", "remarks"]
+    rows = [[lg.name, lg.short_name, lg.sorter, lg.remarks] for lg in leagues]
     return _inserts("leagues", columns, rows)
 
 
@@ -203,8 +203,8 @@ def all_data_sql() -> str:
     # Leagues
     leagues = League.query.order_by(League.id).all()
     if leagues:
-        cols = ["id", "name", "sorter", "remarks"]
-        rows = [[lg.id, lg.name, lg.sorter, lg.remarks] for lg in leagues]
+        cols = ["id", "name", "short_name", "sorter", "remarks"]
+        rows = [[lg.id, lg.name, lg.short_name, lg.sorter, lg.remarks] for lg in leagues]
         parts.append("\n-- leagues")
         parts.append(_inserts("leagues", cols, rows))
 

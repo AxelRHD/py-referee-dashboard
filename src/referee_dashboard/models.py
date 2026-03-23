@@ -12,6 +12,7 @@ class League(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
+    short_name = db.Column(db.String, nullable=False, default="")
     sorter = db.Column(db.Integer, nullable=False, default=0)
     remarks = db.Column(db.String, default="")
     created_at = db.Column(db.String, nullable=False, default=_now)

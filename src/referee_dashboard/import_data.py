@@ -132,6 +132,7 @@ _TEAM_COLUMNS = {
 
 _LEAGUE_COLUMNS = {
     "name": "name",
+    "kürzel": "short_name",
     "sortierung": "sorter",
     "bemerkungen": "remarks",
 }

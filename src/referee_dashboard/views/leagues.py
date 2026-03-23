@@ -25,11 +25,12 @@ def league_list(leagues):
             ],
         ],
         data_table(
-            ["#", "Name", "Bemerkungen", "Aktionen"],
+            ["#", "Name", "Kürzel", "Bemerkungen", "Aktionen"],
             [
                 tr[
                     td(".text-end")[str(league.sorter)],
                     td[league.name],
+                    td[league.short_name or ""],
                     td[league.remarks or ""],
                     action_links(
                         f"/leagues/{league.id}/edit",
@@ -52,6 +53,7 @@ def league_form(league=None, errors=None, data=None):
     elif is_edit:
         vals = {
             "name": league.name,
+            "short_name": league.short_name or "",
             "sorter": league.sorter,
             "remarks": league.remarks or "",
         }
@@ -74,6 +76,13 @@ def league_form(league=None, errors=None, data=None):
                         error=errors.get("name", ""),
                     ),
                     error=errors.get("name", ""),
+                ),
+                form_field(
+                    "Kürzel",
+                    text_input(
+                        "short_name",
+                        value=str(vals.get("short_name", "")),
+                    ),
                 ),
                 form_field(
                     "Sortierung",

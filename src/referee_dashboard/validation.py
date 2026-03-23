@@ -137,6 +137,7 @@ def validate_league(form):
     data = {}
 
     data["name"] = _require(form, "name", errors, "Name")
+    data["short_name"] = form.get("short_name", "").strip()
     data["sorter"] = _parse_int(form, "sorter", errors, "Sortierung")
     data["remarks"] = form.get("remarks", "").strip()
 

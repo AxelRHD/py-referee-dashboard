@@ -32,7 +32,56 @@ def init_app(app):
         import referee_dashboard.models  # noqa: F401
 
         db.create_all()
+        _migrate(db)
         seed_positions()
+
+
+def _migrate(database):
+    """Run lightweight schema migrations for existing databases."""
+    conn = database.engine.raw_connection()
+    cursor = conn.connection.cursor()
+
+    # Ensure short_name is after name in leagues (requires table rebuild)
+    cursor.execute("PRAGMA table_info(leagues)")
+    col_names = [row[1] for row in cursor.fetchall()]
+    needs_rebuild = (
+        "short_name" not in col_names
+        or col_names.index("short_name") != col_names.index("name") + 1
+    )
+    if needs_rebuild:
+        cursor.execute("PRAGMA foreign_keys=OFF")
+        cursor.execute("""
+            CREATE TABLE leagues_new (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                short_name VARCHAR NOT NULL DEFAULT '',
+                sorter INTEGER NOT NULL DEFAULT 0,
+                remarks VARCHAR DEFAULT '',
+                created_at VARCHAR NOT NULL,
+                updated_at VARCHAR NOT NULL
+            )
+        """)
+        has_short = "short_name" in col_names
+        if has_short:
+            cursor.execute("""
+                INSERT INTO leagues_new
+                    (id, name, short_name, sorter, remarks, created_at, updated_at)
+                SELECT id, name, short_name, sorter, remarks, created_at, updated_at
+                FROM leagues
+            """)
+        else:
+            cursor.execute("""
+                INSERT INTO leagues_new
+                    (id, name, short_name, sorter, remarks, created_at, updated_at)
+                SELECT id, name, '', sorter, remarks, created_at, updated_at
+                FROM leagues
+            """)
+        cursor.execute("DROP TABLE leagues")
+        cursor.execute("ALTER TABLE leagues_new RENAME TO leagues")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        conn.connection.commit()
+
+    conn.close()
 
 
 def init_db():
