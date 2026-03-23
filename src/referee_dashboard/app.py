@@ -1,11 +1,9 @@
 from pathlib import Path
 
-from flask import Flask
-from htpy import h1, p
+from flask import Flask, redirect, url_for
 
 from referee_dashboard.config import load_config
 from referee_dashboard.db import init_app
-from referee_dashboard.views.layout import base_page
 
 
 def create_app():
@@ -33,12 +31,7 @@ def create_app():
 
     @app.route("/")
     def index():
-        page = base_page(
-            "Start",
-            h1["Referee Dashboard"],
-            p["Willkommen. Verwende die Navigation oben."],
-        )
-        return str(page)
+        return redirect(url_for("dashboard.index"))
 
     return app
 

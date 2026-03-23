@@ -111,23 +111,29 @@ def dashboard_page(seasons, default_season):
     alpine_script = Markup(f"""<script>
     document.addEventListener('alpine:init', () => {{
         Alpine.data('dashboard', () => ({{
-            season: '{default_season}',
+            season: localStorage.getItem('db_season') || '{default_season}',
             games: [],
             positions: [],
             availableLeagues: [],
             availablePositions: [],
-            filterLeague: '',
-            filterPosition: '',
+            filterLeague: localStorage.getItem('db_filterLeague') || '',
+            filterPositions: JSON.parse(localStorage.getItem('db_filterPositions') || '[]'),
             loading: true,
-            view: 'year',
-            onlyCompleted: false,
+            view: localStorage.getItem('db_view') || 'year',
+            onlyCompleted: localStorage.getItem('db_onlyCompleted') === 'true',
             today: new Date().toISOString().slice(0, 10),
+
+            togglePosition(arr, p) {{
+                var i = arr.indexOf(p);
+                if (i >= 0) arr.splice(i, 1); else arr.push(p);
+            }},
 
             get filtered() {{
                 return this.games.filter(g => {{
                     if (this.onlyCompleted && g.date >= this.today) return false;
                     if (this.filterLeague && g.league_id != this.filterLeague) return false;
-                    if (this.filterPosition && g.position !== this.filterPosition) return false;
+                    if (this.filterPositions.length
+                        && !this.filterPositions.includes(g.position)) return false;
                     return true;
                 }});
             }},
@@ -145,21 +151,139 @@ def dashboard_page(seasons, default_season):
                 }};
             }},
 
-            init() {{
-                this.loadSeason();
-                this.$watch('season', () => this.loadSeason());
-                this.$watch('filtered', () => this.renderCharts());
-                this.$watch('filterLeague', () => this.renderPositionChart());
-                this.$watch('onlyCompleted', () => this.renderCharts());
-                window.addEventListener('theme-changed', () => {{
-                    this.$nextTick(() => this.renderCharts());
+            overviewGames: [],
+            overviewPositions: [],
+            overviewLeagues: [],
+            overviewLoaded: false,
+            ovFilterLeague: '',
+            ovFilterPositions: [],
+
+            get overviewFiltered() {{
+                return this.overviewGames.filter(g => {{
+                    if (this.onlyCompleted && g.date >= this.today) return false;
+                    if (this.ovFilterLeague && g.league_id != this.ovFilterLeague) return false;
+                    if (this.ovFilterPositions.length
+                        && !this.ovFilterPositions.includes(g.position)) return false;
+                    return true;
                 }});
             }},
 
+            // Position charts: apply position filter only if >1 selected
+            get overviewForPositions() {{
+                return this.overviewGames.filter(g => {{
+                    if (this.onlyCompleted && g.date >= this.today) return false;
+                    if (this.ovFilterLeague && g.league_id != this.ovFilterLeague) return false;
+                    if (this.ovFilterPositions.length > 1
+                        && !this.ovFilterPositions.includes(g.position)) return false;
+                    return true;
+                }});
+            }},
+
+            get overviewYears() {{
+                var seen = new Set();
+                this.overviewFiltered.forEach(g => seen.add(g.year));
+                return [...seen].sort();
+            }},
+
+            overviewAggByYear(games) {{
+                var byYear = {{}};
+                games.forEach(g => {{
+                    if (!byYear[g.year]) byYear[g.year] = {{
+                        count: 0, fee: 0, travel: 0, km: 0,
+                        by_position: {{}},
+                    }};
+                    var y = byYear[g.year];
+                    y.count++;
+                    y.fee += g.fee;
+                    y.travel += g.travel;
+                    y.km += g.km;
+                    y.by_position[g.position] =
+                        (y.by_position[g.position] || 0) + 1;
+                }});
+                return byYear;
+            }},
+
+            get overviewByYear() {{
+                return this.overviewAggByYear(this.overviewFiltered);
+            }},
+
+            get overviewByYearForPositions() {{
+                return this.overviewAggByYear(this.overviewForPositions);
+            }},
+
+            get overviewStats() {{
+                var f = this.overviewFiltered;
+                var fee = f.reduce((s, g) => s + g.fee, 0);
+                var travel = f.reduce((s, g) => s + g.travel, 0);
+                return {{
+                    count: f.length,
+                    fee: fee,
+                    travel: travel,
+                    total: fee + travel,
+                    km: f.reduce((s, g) => s + g.km, 0),
+                }};
+            }},
+
+            init() {{
+                this.loadSeason();
+                if (this.view === 'overview') {{
+                    this.loadOverview();
+                }}
+                this.$watch('season', (v) => {{
+                    localStorage.setItem('db_season', v);
+                    this.loadSeason();
+                }});
+                this.$watch('filtered', () => this.renderCharts());
+                this.$watch('filterLeague', (v) => {{
+                    localStorage.setItem('db_filterLeague', v);
+                    this.renderPositionChart();
+                }});
+                this.$watch('filterPositions', (v) => {{
+                    localStorage.setItem('db_filterPositions', JSON.stringify(v));
+                }});
+                this.$watch('onlyCompleted', (v) => {{
+                    localStorage.setItem('db_onlyCompleted', v);
+                    this.renderCharts();
+                    if (this.view === 'overview') {{
+                        this.$nextTick(() => this.renderOverviewCharts());
+                    }}
+                }});
+                this.$watch('ovFilterLeague', (v) => {{
+                    localStorage.setItem('db_ovFilterLeague', v);
+                    if (this.view === 'overview') {{
+                        this.$nextTick(() => this.renderOverviewCharts());
+                    }}
+                }});
+                this.$watch('ovFilterPositions', (v) => {{
+                    localStorage.setItem('db_ovFilterPositions', JSON.stringify(v));
+                    if (this.view === 'overview') {{
+                        this.$nextTick(() => this.renderOverviewCharts());
+                    }}
+                }});
+                this.$watch('view', (v) => {{
+                    localStorage.setItem('db_view', v);
+                    if (v === 'overview') {{
+                        this.loadOverview();
+                    }} else {{
+                        this.$nextTick(() => this.renderCharts());
+                    }}
+                }});
+                window.addEventListener('theme-changed', () => {{
+                    this.$nextTick(() => {{
+                        this.renderCharts();
+                        if (this.view === 'overview') this.renderOverviewCharts();
+                    }});
+                }});
+            }},
+
+            _seasonLoaded: false,
             async loadSeason() {{
                 this.loading = true;
-                this.filterLeague = '';
-                this.filterPosition = '';
+                if (this._seasonLoaded) {{
+                    this.filterLeague = '';
+                    this.filterPositions = [];
+                }}
+                this._seasonLoaded = true;
                 var res = await fetch('/dashboard/api/data/' + this.season);
                 var data = await res.json();
                 this.games = data.games;
@@ -182,13 +306,13 @@ def dashboard_page(seasons, default_season):
             {_eur_js()}
             {_plotly_layout_js()}
 
-            stackAnnotations(categories, totals, horizontal, fmt) {{
+            stackAnnotations(categories, totals, horizontal, fmt, angle) {{
                 var fg = getComputedStyle(document.body).color;
                 return categories.map((cat, i) => {{
                     var val = totals[i] || 0;
                     if (val === 0) return null;
                     var label = fmt ? fmt(val) : String(val);
-                    return horizontal ? {{
+                    var a = horizontal ? {{
                         x: val, y: cat, text: label,
                         xanchor: 'left', yanchor: 'middle',
                         xshift: 5, showarrow: false,
@@ -199,6 +323,8 @@ def dashboard_page(seasons, default_season):
                         yshift: 3, showarrow: false,
                         font: {{size: 11, color: fg}},
                     }};
+                    if (angle) a.textangle = angle;
+                    return a;
                 }}).filter(a => a);
             }},
 
@@ -207,6 +333,8 @@ def dashboard_page(seasons, default_season):
                 var games = this.games.filter(g => {{
                     if (this.onlyCompleted && g.date >= this.today) return false;
                     if (this.filterLeague && g.league_id != this.filterLeague) return false;
+                    if (this.filterPositions.length > 1
+                        && !this.filterPositions.includes(g.position)) return false;
                     return true;
                 }});
                 var counts = {{}};
@@ -263,7 +391,7 @@ def dashboard_page(seasons, default_season):
                 Plotly.newPlot('chart-monthly', traces, this.baseLayout(350, {{
                     barmode: 'stack',
                     showlegend: true,
-                    legend: {{font: {{size: 10}}}},
+                    legend: {{font: {{size: 10}}, traceorder: 'normal'}},
                     margin: {{t: 20, b: 30, l: 30, r: 10}},
                     annotations: this.stackAnnotations(monthLabels, totals, false),
                 }}), {{responsive: true, displayModeBar: false}});
@@ -271,45 +399,262 @@ def dashboard_page(seasons, default_season):
 
             renderLeagueChart() {{
                 var colors = {NORD_COLORS_JS};
-                var monthLabels = {MONTH_LABELS_JS};
                 var games = this.games.filter(g => {{
                     if (this.onlyCompleted && g.date >= this.today) return false;
-                    if (this.filterPosition && g.position !== this.filterPosition) return false;
+                    if (this.filterPositions.length
+                        && !this.filterPositions.includes(g.position)) return false;
                     return true;
                 }});
                 var leagueData = {{}};
-                var monthsPresent = new Set();
+                var posPresent = new Set();
                 games.forEach(g => {{
                     leagueData[g.league] = leagueData[g.league] || {{}};
-                    var m = parseInt(g.month) - 1;
-                    leagueData[g.league][m] = (leagueData[g.league][m] || 0) + 1;
-                    monthsPresent.add(m);
+                    leagueData[g.league][g.position] =
+                        (leagueData[g.league][g.position] || 0) + 1;
+                    posPresent.add(g.position);
                 }});
                 var leagues = Object.entries(leagueData)
-                    .map(([lg, months]) => [lg, Object.values(months).reduce((a, b) => a + b, 0)])
+                    .map(([lg, pos]) => [lg, Object.values(pos).reduce((a, b) => a + b, 0)])
                     .sort((a, b) => a[1] - b[1])
                     .map(e => e[0]);
-                var sortedMonths = [...monthsPresent].sort((a, b) => a - b);
-                var traces = sortedMonths.map((m, i) => ({{
-                    x: leagues.map(lg => leagueData[lg][m] || 0),
+                var posOrder = this.positions.filter(p => posPresent.has(p));
+                var traces = posOrder.map((p, i) => ({{
+                    x: leagues.map(lg =>
+                        (leagueData[lg] && leagueData[lg][p]) || 0
+                    ),
                     y: leagues,
-                    type: 'bar', orientation: 'h', name: monthLabels[m],
+                    type: 'bar', orientation: 'h', name: p,
                     marker: {{color: colors[i % colors.length]}},
                 }}));
                 var leagueTotals = leagues.map(lg => {{
-                    return Object.values(leagueData[lg]).reduce((a, b) => a + b, 0);
+                    return Object.values(leagueData[lg])
+                        .reduce((a, b) => a + b, 0);
                 }});
                 Plotly.newPlot('chart-leagues', traces, this.baseLayout(350, {{
                     barmode: 'stack',
                     showlegend: true,
-                    legend: {{font: {{size: 10}}}},
+                    legend: {{font: {{size: 10}}, traceorder: 'normal'}},
                     yaxis: {{
                         gridcolor: this.baseLayout(0).yaxis.gridcolor,
                         categoryorder: 'array', categoryarray: leagues,
                         ticksuffix: '  ',
                     }},
-                    margin: {{t: 10, b: 30, l: 120, r: 30}},
+                    margin: {{t: 10, b: 30, l: 160, r: 30}},
                     annotations: this.stackAnnotations(leagues, leagueTotals, true),
+                }}), {{responsive: true, displayModeBar: false}});
+            }},
+
+            async loadOverview() {{
+                if (this.overviewLoaded) {{
+                    this.$nextTick(() => this.renderOverviewCharts());
+                    return;
+                }}
+                var res = await fetch('/dashboard/api/overview');
+                var data = await res.json();
+                this.overviewGames = data.games;
+                this.overviewPositions = data.positions;
+                this.overviewLeagues = data.available_leagues;
+                this.ovFilterLeague = localStorage.getItem('db_ovFilterLeague') || '';
+                this.ovFilterPositions = JSON.parse(
+                    localStorage.getItem('db_ovFilterPositions') || '[]'
+                );
+                this.overviewLoaded = true;
+                this.$nextTick(() => this.renderOverviewCharts());
+            }},
+
+            // Year labels for Plotly: zero-width space forces category detection
+            yearLabels(years) {{
+                return years.map(y => '\\u200b' + y);
+            }},
+
+            // Tick values for overview x-axis: multiples of 5
+            yearTickVals(xl, years) {{
+                return xl.filter((_, i) => parseInt(years[i]) % 5 === 0);
+            }},
+
+            renderOverviewCharts() {{
+                if (!this.overviewLoaded) return;
+                this.renderOverviewGamesPerYear();
+                this.renderOverviewPositionTrend();
+                this.renderOverviewPositionPie();
+                this.renderOverviewFeePerYear();
+                this.renderOverviewAvgPerGame();
+                this.renderOverviewKmPerYear();
+            }},
+
+            renderOverviewGamesPerYear() {{
+                var colors = {NORD_COLORS_JS};
+                var byYear = this.overviewByYear;
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+                var traces = this.overviewPositions
+                    .filter(p => years.some(y =>
+                        (byYear[y].by_position[p] || 0) > 0
+                    ))
+                    .map((p, i) => ({{
+                        x: xl,
+                        y: years.map(y =>
+                            byYear[y].by_position[p] || 0
+                        ),
+                        type: 'bar', name: p,
+                        marker: {{color: colors[i % colors.length]}},
+                    }}));
+                var totals = years.map(y => byYear[y].count);
+
+                Plotly.newPlot('chart-overview-games', traces,
+                    this.baseLayout(350, {{
+                        barmode: 'stack',
+                        showlegend: true,
+                        legend: {{orientation: 'h', font: {{size: 10}},
+                            y: -0.15, x: 0.5, xanchor: 'center',
+                            traceorder: 'normal'}},
+                        margin: {{t: 20, b: 60, l: 30, r: 10}},
+                        xaxis: {{tickvals: this.yearTickVals(xl, years)}},
+                        annotations: this.stackAnnotations(
+                            xl, totals, false
+                        ),
+                    }}),
+                    {{responsive: true, displayModeBar: false}});
+            }},
+
+            renderOverviewPositionTrend() {{
+                var colors = {NORD_COLORS_JS};
+                var byYear = this.overviewByYear;
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+                var traces = this.overviewPositions
+                    .filter(p => years.some(y =>
+                        (byYear[y].by_position[p] || 0) > 0
+                    ))
+                    .map((p, i) => ({{
+                        x: xl,
+                        y: years.map(y =>
+                            byYear[y].by_position[p] || 0
+                        ),
+                        type: 'scatter', mode: 'lines+markers',
+                        name: p,
+                        line: {{
+                            color: colors[i % colors.length], width: 2,
+                        }},
+                        marker: {{size: 5}},
+                    }}));
+
+                Plotly.newPlot('chart-overview-trend', traces,
+                    this.baseLayout(350, {{
+                        showlegend: true,
+                        legend: {{orientation: 'h', font: {{size: 10}},
+                            y: -0.15, x: 0.5, xanchor: 'center',
+                            traceorder: 'normal'}},
+                        margin: {{t: 20, b: 60, l: 30, r: 10}},
+                        xaxis: {{tickvals: this.yearTickVals(xl, years)}},
+                    }}),
+                    {{responsive: true, displayModeBar: false}});
+            }},
+
+            renderOverviewPositionPie() {{
+                var colors = {NORD_COLORS_JS};
+                var byYear = this.overviewByYearForPositions;
+                var totals = {{}};
+                Object.values(byYear).forEach(y => {{
+                    Object.entries(y.by_position).forEach(([p, c]) => {{
+                        totals[p] = (totals[p] || 0) + c;
+                    }});
+                }});
+                var sorted = Object.entries(totals)
+                    .sort((a, b) => b[1] - a[1]);
+                Plotly.newPlot('chart-overview-pie', [{{
+                    labels: sorted.map(e => e[0]),
+                    values: sorted.map(e => e[1]),
+                    type: 'pie', hole: 0.4,
+                    marker: {{colors: colors}},
+                    textinfo: 'label+percent',
+                    textposition: 'outside',
+                    textfont: {{size: 11}},
+                    domain: {{x: [0.1, 0.9], y: [0.1, 0.9]}},
+                }}], this.baseLayout(350, {{
+                    showlegend: false,
+                    margin: {{t: 30, b: 30, l: 30, r: 30}},
+                }}), {{responsive: true, displayModeBar: false}});
+            }},
+
+            renderOverviewFeePerYear() {{
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+                var byYear = this.overviewByYear;
+                var feeTrace = {{
+                    x: xl,
+                    y: years.map(y =>
+                        byYear[y] ? byYear[y].fee : 0
+                    ),
+                    type: 'bar', name: 'Pauschale',
+                    marker: {{color: '#5E81AC'}},
+                }};
+                var travelTrace = {{
+                    x: xl,
+                    y: years.map(y =>
+                        byYear[y] ? byYear[y].travel : 0
+                    ),
+                    type: 'bar', name: 'Fahrtkosten',
+                    marker: {{color: '#88C0D0'}},
+                }};
+                var totals = years.map(y => {{
+                    var d = byYear[y];
+                    return d ? d.fee + d.travel : 0;
+                }});
+                var fmtEur = v => Math.round(v) + ' €';
+                var traces = [feeTrace, travelTrace];
+
+                Plotly.newPlot('chart-overview-fee', traces,
+                    this.baseLayout(350, {{
+                        barmode: 'stack',
+                        showlegend: true,
+                        legend: {{orientation: 'h', font: {{size: 10}},
+                            y: -0.15, x: 0.5, xanchor: 'center',
+                            traceorder: 'normal'}},
+                        margin: {{t: 20, b: 60, l: 50, r: 10}},
+                        xaxis: {{tickvals: this.yearTickVals(xl, years)}},
+                        annotations: this.stackAnnotations(
+                            xl, totals, false, fmtEur, -45
+                        ),
+                    }}),
+                    {{responsive: true, displayModeBar: false}});
+            }},
+
+            renderOverviewAvgPerGame() {{
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+                var byYear = this.overviewByYear;
+                var avgs = years.map(y => {{
+                    var d = byYear[y];
+                    if (!d || d.count === 0) return 0;
+                    return (d.fee + d.travel) / d.count;
+                }});
+                var fmtEur = v => v.toFixed(0) + ' €';
+                Plotly.newPlot('chart-overview-avg', [{{
+                    x: xl, y: avgs, type: 'bar',
+                    marker: {{color: '#A3BE8C'}},
+                    text: avgs.map(fmtEur), textposition: 'auto',
+                }}], this.baseLayout(350, {{
+                    margin: {{t: 20, b: 30, l: 50, r: 10}},
+                    xaxis: {{tickvals: this.yearTickVals(xl, years)}},
+                }}), {{responsive: true, displayModeBar: false}});
+            }},
+
+            renderOverviewKmPerYear() {{
+                var years = this.overviewYears;
+                var xl = this.yearLabels(years);
+                var byYear = this.overviewByYear;
+                var kms = years.map(y =>
+                    byYear[y] ? byYear[y].km : 0
+                );
+                Plotly.newPlot('chart-overview-km', [{{
+                    x: xl, y: kms, type: 'bar',
+                    marker: {{color: '#81A1C1'}},
+                    text: kms.map(v => v.toLocaleString('de-DE')),
+                    textposition: 'auto',
+                }}], this.baseLayout(350, {{
+                    margin: {{t: 20, b: 30, l: 50, r: 10}},
+                    xaxis: {{tickvals: this.yearTickVals(xl, years)}},
                 }}), {{responsive: true, displayModeBar: false}});
             }},
 
@@ -346,7 +691,7 @@ def dashboard_page(seasons, default_season):
                 Plotly.newPlot(chartId, traces, this.baseLayout(350, {{
                     barmode: 'stack',
                     showlegend: true,
-                    legend: {{font: {{size: 10}}}},
+                    legend: {{font: {{size: 10}}, traceorder: 'normal'}},
                     yaxis: {{
                         gridcolor: this.baseLayout(0).yaxis.gridcolor,
                         categoryorder: 'array',
@@ -397,18 +742,32 @@ def dashboard_page(seasons, default_season):
                         **{"x-model": "season"},
                     )[season_options],
                 ],
+                div(".mb-3")[
+                    small(".text-muted.d-block.mb-1")["Position"],
+                    div(
+                        ".d-flex.flex-wrap.gap-1",
+                    )[
+                        template(
+                            {"x-for": "p in availablePositions", ":key": "p"}
+                        )[
+                            button(
+                                ".btn.btn-sm",
+                                type="button",
+                                **{
+                                    ":class": "filterPositions.includes(p)"
+                                    " ? 'btn-primary' : 'btn-outline-secondary'",
+                                    "@click": "togglePosition(filterPositions, p)",
+                                    "x-text": "p",
+                                },
+                            ),
+                        ],
+                    ],
+                ],
                 _alpine_select(
                     "Liga",
                     "filterLeague",
                     template({"x-for": "lg in availableLeagues", ":key": "lg.id"})[
-                        option({":value": "lg.id", "x-text": "lg.name"}),
-                    ],
-                ),
-                _alpine_select(
-                    "Position",
-                    "filterPosition",
-                    template({"x-for": "p in availablePositions", ":key": "p"})[
-                        option({":value": "p", "x-text": "p"}),
+                        option({":value": "'' + lg.id", "x-text": "lg.name"}),
                     ],
                 ),
                 div(".form-check.mb-3")[
@@ -422,19 +781,97 @@ def dashboard_page(seasons, default_season):
                         for_="only-completed",
                     )["Nur geleitet"],
                 ],
+                button(
+                    ".btn.btn-outline-secondary.btn-sm.w-100.mb-3",
+                    type="button",
+                    **{
+                        "@click": "filterLeague = ''; filterPositions = [];"
+                        " onlyCompleted = true",
+                        "x-show": "filterLeague || filterPositions.length"
+                        " || !onlyCompleted",
+                    },
+                )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
                 div(".d-flex.flex-column.gap-2")[
                     _stat_card("Spiele", "stats.count"),
                     _stat_card("Gesamt", "eur(stats.total)"),
                     _stat_card("Vergütung", "eur(stats.fee)"),
                     _stat_card("Fahrtkosten", "eur(stats.travel)"),
                     _stat_card("Kilometer", "stats.km.toLocaleString('de-DE')"),
+                    _stat_card(
+                        "ct/km",
+                        "stats.km > 0"
+                        " ? (stats.travel / stats.km * 100)"
+                        ".toFixed(1).replace('.', ',') + ' ct'"
+                        " : '–'",
+                    ),
                 ],
             ],
-            # Overview placeholder
-            div(
-                ".text-muted.small.py-3",
-                {"x-show": "view === 'overview'"},
-            )["Übersicht wird geladen..."],
+            # Overview sidebar
+            div({"x-show": "view === 'overview'"})[
+                div(".mb-3")[
+                    small(".text-muted.d-block.mb-1")["Position"],
+                    div(
+                        ".d-flex.flex-wrap.gap-1",
+                    )[
+                        template(
+                            {"x-for": "p in overviewPositions", ":key": "p"}
+                        )[
+                            button(
+                                ".btn.btn-sm",
+                                type="button",
+                                **{
+                                    ":class": "ovFilterPositions.includes(p)"
+                                    " ? 'btn-primary' : 'btn-outline-secondary'",
+                                    "@click": "togglePosition(ovFilterPositions, p)",
+                                    "x-text": "p",
+                                },
+                            ),
+                        ],
+                    ],
+                ],
+                _alpine_select(
+                    "Liga",
+                    "ovFilterLeague",
+                    template(
+                        {"x-for": "lg in overviewLeagues", ":key": "lg.id"}
+                    )[option({":value": "'' + lg.id", "x-text": "lg.name"})],
+                ),
+                div(".form-check.mb-3")[
+                    input(
+                        "#only-completed-overview.form-check-input",
+                        type="checkbox",
+                        **{"x-model": "onlyCompleted"},
+                    ),
+                    label(
+                        ".form-check-label.small",
+                        for_="only-completed-overview",
+                    )["Nur geleitet"],
+                ],
+                button(
+                    ".btn.btn-outline-secondary.btn-sm.w-100.mb-3",
+                    type="button",
+                    **{
+                        "@click": "ovFilterLeague = ''; ovFilterPositions = [];"
+                        " onlyCompleted = true",
+                        "x-show": "ovFilterLeague || ovFilterPositions.length"
+                        " || !onlyCompleted",
+                    },
+                )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
+                div(".d-flex.flex-column.gap-2")[
+                    _stat_card("Spiele", "overviewStats.count"),
+                    _stat_card("Gesamt", "eur(overviewStats.total)"),
+                    _stat_card("Vergütung", "eur(overviewStats.fee)"),
+                    _stat_card("Fahrtkosten", "eur(overviewStats.travel)"),
+                    _stat_card("Kilometer", "overviewStats.km.toLocaleString('de-DE')"),
+                    _stat_card(
+                        "ct/km",
+                        "overviewStats.km > 0"
+                        " ? (overviewStats.travel / overviewStats.km * 100)"
+                        ".toFixed(1).replace('.', ',') + ' ct'"
+                        " : '–'",
+                    ),
+                ],
+            ],
         ],
     ]
 
@@ -462,6 +899,42 @@ def dashboard_page(seasons, default_season):
         ),
     ]
 
+    # Charts area (overview)
+    overview_charts = div(".col-md-10", {"x-show": "view === 'overview'"})[
+        _collapsible_section(
+            "overview-games-body",
+            "bi.bi-bar-chart-fill",
+            "Einsätze",
+            div(".row.g-3")[
+                div(".col-md-4")[
+                    _widget_card("Spiele pro Jahr", "chart-overview-games")
+                ],
+                div(".col-md-4")[
+                    _widget_card("Positionstrend", "chart-overview-trend")
+                ],
+                div(".col-md-4")[
+                    _widget_card("Positionsverteilung", "chart-overview-pie")
+                ],
+            ],
+        ),
+        _collapsible_section(
+            "overview-fees-body",
+            "bi.bi-currency-euro",
+            "Vergütung",
+            div(".row.g-3")[
+                div(".col-md-4")[
+                    _widget_card("Vergütung pro Jahr", "chart-overview-fee")
+                ],
+                div(".col-md-4")[
+                    _widget_card("Durchschnitt pro Spiel", "chart-overview-avg")
+                ],
+                div(".col-md-4")[
+                    _widget_card("Kilometer pro Jahr", "chart-overview-km")
+                ],
+            ],
+        ),
+    ]
+
     return [
         div(
             "#dashboard-app.container-dashboard",
@@ -477,7 +950,9 @@ def dashboard_page(seasons, default_season):
                 ],
             ],
             # Content
-            div({"x-show": "!loading", "x-cloak": ""})[div(".row.g-4")[sidebar, charts],],
+            div({"x-show": "!loading", "x-cloak": ""})[
+                div(".row.g-4")[sidebar, charts, overview_charts],
+            ],
         ],
         alpine_script,
     ]

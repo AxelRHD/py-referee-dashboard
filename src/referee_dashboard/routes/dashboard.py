@@ -44,6 +44,42 @@ def index():
     )
 
 
+@bp.route("/api/overview")
+def api_overview():
+    """JSON endpoint: lightweight game list for overview aggregation."""
+    games = Game.query.order_by(Game.game_date).all()
+    positions = [p.position for p in Position.query.order_by(Position.sorter).all()]
+    leagues_map = {lg.id: lg.name for lg in League.query.all()}
+
+    league_ids = {g.league_id for g in games}
+    available_leagues = [
+        {"id": lg.id, "name": lg.name}
+        for lg in League.query.filter(League.id.in_(league_ids))
+        .order_by(League.sorter, League.name)
+        .all()
+    ]
+
+    data = [
+        {
+            "year": g.game_date[:4],
+            "date": g.game_date,
+            "position": g.position,
+            "league_id": g.league_id,
+            "league": leagues_map.get(g.league_id, ""),
+            "fee": g.referee_fee,
+            "travel": g.travel_costs,
+            "km": g.km_driven,
+        }
+        for g in games
+    ]
+
+    return jsonify({
+        "games": data,
+        "positions": positions,
+        "available_leagues": available_leagues,
+    })
+
+
 @bp.route("/api/data/<season>")
 def api_data(season):
     """JSON endpoint: all games for a season with resolved names."""
