@@ -1,7 +1,8 @@
-from flask import Blueprint, redirect, request, url_for
+from flask import Blueprint, flash, redirect, request, url_for
 
 from referee_dashboard.db import db
 from referee_dashboard.models import Team
+from referee_dashboard.validation import validate_team
 from referee_dashboard.views.layout import base_page
 from referee_dashboard.views.teams import team_form, team_list
 
@@ -14,39 +15,36 @@ def index():
     return str(base_page("Teams", *team_list(teams)))
 
 
-@bp.route("/teams/new")
+@bp.route("/teams/new", methods=["GET", "POST"])
 def new():
+    if request.method == "POST":
+        data, errors = validate_team(request.form)
+        if errors:
+            return str(base_page("Neues Team", *team_form(errors=errors, data=data))), 422
+        team = Team(**data)
+        db.session.add(team)
+        db.session.commit()
+        flash("Team wurde erstellt.", "success")
+        return redirect(url_for("teams.index"))
     return str(base_page("Neues Team", *team_form()))
 
 
-@bp.route("/teams", methods=["POST"])
-def create():
-    team = Team(
-        name=request.form["name"],
-        state=request.form.get("state", ""),
-        is_active=1 if request.form.get("is_active") else 0,
-        remarks=request.form.get("remarks", ""),
-    )
-    db.session.add(team)
-    db.session.commit()
-    return redirect(url_for("teams.index"))
-
-
-@bp.route("/teams/<int:id>/edit")
+@bp.route("/teams/<int:id>/edit", methods=["GET", "POST"])
 def edit(id):
     team = db.get_or_404(Team, id)
+    if request.method == "POST":
+        data, errors = validate_team(request.form)
+        if errors:
+            return (
+                str(base_page("Team bearbeiten", *team_form(team=team, errors=errors, data=data))),
+                422,
+            )
+        for key, val in data.items():
+            setattr(team, key, val)
+        db.session.commit()
+        flash("Team wurde aktualisiert.", "success")
+        return redirect(url_for("teams.index"))
     return str(base_page("Team bearbeiten", *team_form(team)))
-
-
-@bp.route("/teams/<int:id>", methods=["POST"])
-def update(id):
-    team = db.get_or_404(Team, id)
-    team.name = request.form["name"]
-    team.state = request.form.get("state", "")
-    team.is_active = 1 if request.form.get("is_active") else 0
-    team.remarks = request.form.get("remarks", "")
-    db.session.commit()
-    return redirect(url_for("teams.index"))
 
 
 @bp.route("/teams/<int:id>/delete", methods=["POST"])
@@ -54,4 +52,5 @@ def delete(id):
     team = db.get_or_404(Team, id)
     db.session.delete(team)
     db.session.commit()
+    flash("Team wurde gelöscht.", "success")
     return redirect(url_for("teams.index"))

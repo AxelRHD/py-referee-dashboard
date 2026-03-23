@@ -1,3 +1,4 @@
+from flask import get_flashed_messages
 from htpy import a, body, button, div, head, html, i, link, meta, nav, script, title
 from markupsafe import Markup
 
@@ -26,6 +27,24 @@ document.addEventListener('alpine:init', () => {
 </script>""")
 
 
+def _flash_alerts():
+    """Render Bootstrap alerts for Flask flash messages."""
+    messages = get_flashed_messages(with_categories=True)
+    if not messages:
+        return ""
+    return [
+        div(f".alert.alert-{cat}.alert-dismissible.fade.show", role="alert")[
+            msg,
+            button(
+                ".btn-close",
+                type="button",
+                **{"data-bs-dismiss": "alert", "aria-label": "Schließen"},
+            ),
+        ]
+        for cat, msg in messages
+    ]
+
+
 def base_page(page_title: str, *content, container: str = "container"):
     """Base HTML layout. Set container='' to manage layout in content."""
     return html[
@@ -46,7 +65,9 @@ def base_page(page_title: str, *content, container: str = "container"):
         ],
         body[
             _navbar(),
-            div(f".{container}.mt-4")[content] if container else div(".mt-4")[content],
+            div(f".{container}.mt-4")[_flash_alerts(), content]
+            if container
+            else div(".mt-4")[_flash_alerts(), content],
             script(
                 src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
             ),

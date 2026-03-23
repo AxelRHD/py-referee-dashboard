@@ -1,3 +1,5 @@
+import json
+
 from htpy import (
     a,
     button,
@@ -15,14 +17,18 @@ from htpy import (
     thead,
     tr,
 )
+from markupsafe import Markup
 
 
-def form_field(field_label: str, field_input):
-    """Bootstrap form group with label and input."""
-    return div(".mb-3")[
+def form_field(field_label: str, field_input, error: str = ""):
+    """Bootstrap form group with label, input, and optional error message."""
+    parts = [
         label(".form-label")[field_label],
         field_input,
     ]
+    if error:
+        parts.append(div(".invalid-feedback.d-block")[error])
+    return div(".mb-3")[parts]
 
 
 def form_row(*fields):
@@ -30,10 +36,15 @@ def form_row(*fields):
     return div(".row")[[div(".col")[field] for field in fields]]
 
 
-def text_input(name: str, value: str = "", required: bool = False, **attrs):
+def _invalid_cls(error: str) -> str:
+    """Return .is-invalid suffix if there's an error."""
+    return ".is-invalid" if error else ""
+
+
+def text_input(name: str, value: str = "", required: bool = False, error: str = "", **attrs):
     """Bootstrap text input."""
     return input(
-        ".form-control",
+        f".form-control{_invalid_cls(error)}",
         type="text",
         name=name,
         value=value,
@@ -42,10 +53,60 @@ def text_input(name: str, value: str = "", required: bool = False, **attrs):
     )
 
 
-def number_input(name: str, value: str = "", step: str = "any", required: bool = False, **attrs):
+def datalist_input(
+    name: str,
+    value: str = "",
+    datalist_id: str = "",
+    options: list[str] | None = None,
+    required: bool = False,
+    error: str = "",
+    **attrs,
+):
+    """Text input with inline autofill (type-ahead completion)."""
+    options = options or []
+    input_id = f"ac-{name}"
+    opts_json = json.dumps(options)
+
+    js = Markup(
+        f"<script>"
+        f"(function(){{"
+        f"var el=document.getElementById('{input_id}'),opts={opts_json};"
+        f"el.addEventListener('input',function(e){{"
+        f"if(e.inputType&&e.inputType.indexOf('delete')>=0)return;"
+        f"var v=el.value;"
+        f"if(!v)return;"
+        f"var m=opts.find(function(o){{return o.toLowerCase().startsWith(v.toLowerCase())}});"
+        f"if(m){{el.value=m;el.setSelectionRange(v.length,m.length)}}"
+        f"}});"
+        f"el.addEventListener('keydown',function(e){{"
+        f"if(e.key==='Tab'&&el.selectionStart!==el.selectionEnd)"
+        f"{{el.setSelectionRange(el.value.length,el.value.length)}}"
+        f"}});"
+        f"}})()"
+        f"</script>"
+    )
+
+    return [
+        input(
+            f".form-control{_invalid_cls(error)}",
+            type="text",
+            id=input_id,
+            name=name,
+            value=value,
+            autocomplete="off",
+            required=required,
+            **attrs,
+        ),
+        js,
+    ]
+
+
+def number_input(
+    name: str, value: str = "", step: str = "any", required: bool = False, error: str = "", **attrs
+):
     """Bootstrap number input."""
     return input(
-        ".form-control",
+        f".form-control{_invalid_cls(error)}",
         type="number",
         name=name,
         value=value,
@@ -55,9 +116,15 @@ def number_input(name: str, value: str = "", step: str = "any", required: bool =
     )
 
 
-def date_input(name: str, value: str = "", required: bool = False):
+def date_input(name: str, value: str = "", required: bool = False, error: str = ""):
     """Bootstrap date input."""
-    return input(".form-control", type="date", name=name, value=value, required=required)
+    return input(
+        f".form-control{_invalid_cls(error)}",
+        type="date",
+        name=name,
+        value=value,
+        required=required,
+    )
 
 
 def time_input(name: str, value: str = ""):
@@ -65,9 +132,9 @@ def time_input(name: str, value: str = ""):
     return input(".form-control", type="time", name=name, value=value)
 
 
-def textarea_input(name: str, value: str = "", rows: int = 3):
+def textarea_input(name: str, value: str = "", rows: int = 3, error: str = ""):
     """Bootstrap textarea."""
-    return textarea(".form-control", name=name, rows=str(rows))[value]
+    return textarea(f".form-control{_invalid_cls(error)}", name=name, rows=str(rows))[value]
 
 
 def select_field(
@@ -75,9 +142,10 @@ def select_field(
     options: list[tuple[str, str]],
     selected: str = "",
     required: bool = False,
+    error: str = "",
 ):
     """Bootstrap select dropdown. Options as list of (value, label) tuples."""
-    return select(".form-select", name=name, required=required)[
+    return select(f".form-select{_invalid_cls(error)}", name=name, required=required)[
         option(value="")["— Bitte wählen —"],
         [option(value=val, selected=(val == selected))[lbl] for val, lbl in options],
     ]
@@ -98,9 +166,12 @@ def checkbox_input(name: str, checked: bool = False, field_label: str = ""):
     ]
 
 
-def submit_button(label_text: str = "Speichern"):
-    """Bootstrap primary submit button."""
-    return button(".btn.btn-primary", type="submit")[label_text]
+def submit_button(label_text: str = "Speichern", cancel_url: str = ""):
+    """Bootstrap primary submit button with optional cancel link."""
+    parts = [button(".btn.btn-primary", type="submit")[label_text]]
+    if cancel_url:
+        parts.append(a(".btn.btn-outline-danger.ms-2", href=cancel_url)["Abbrechen"])
+    return div(".mt-3")[parts]
 
 
 def delete_button(url: str):

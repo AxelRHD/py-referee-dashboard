@@ -9,13 +9,13 @@ from referee_dashboard.views.components import (
     action_links,
     checkbox_input,
     data_table,
+    datalist_input,
     date_input,
     form_field,
     form_row,
     number_input,
     select_field,
     submit_button,
-    text_input,
     textarea_input,
     time_input,
 )
@@ -299,13 +299,45 @@ def game_list(games, filter_options=None, filters=None, stats=None):
     ]
 
 
-def game_form(game=None, teams=None, leagues=None, positions=None):
+def game_form(
+    game=None,
+    teams=None,
+    leagues=None,
+    positions=None,
+    errors=None,
+    data=None,
+    venues=None,
+):
     """View: create/edit game form with dropdowns."""
     teams = teams or []
     leagues = leagues or []
     positions = positions or []
+    errors = errors or {}
+    venues = venues or []
 
     is_edit = game is not None
+
+    # Use submitted data (on validation error) or model values
+    if data:
+        vals = data
+    elif is_edit:
+        vals = {
+            "game_date": game.game_date,
+            "game_time": game.game_time or "",
+            "home_team_id": game.home_team_id,
+            "away_team_id": game.away_team_id,
+            "venue": game.venue or "",
+            "league_id": game.league_id,
+            "position": game.position,
+            "referee_fee": game.referee_fee,
+            "travel_costs": game.travel_costs,
+            "km_driven": game.km_driven,
+            "exhibition": game.exhibition,
+            "remarks": game.remarks or "",
+        }
+    else:
+        vals = {}
+
     title = "Spiel bearbeiten" if is_edit else "Neues Spiel"
     action = f"/games/{game.id}" if is_edit else "/games"
 
@@ -322,15 +354,17 @@ def game_form(game=None, teams=None, leagues=None, positions=None):
                     "Datum",
                     date_input(
                         "game_date",
-                        value=game.game_date if is_edit else "",
+                        value=str(vals.get("game_date", "")),
                         required=True,
+                        error=errors.get("game_date", ""),
                     ),
+                    error=errors.get("game_date", ""),
                 ),
                 form_field(
                     "Uhrzeit",
                     time_input(
                         "game_time",
-                        value=game.game_time or "" if is_edit else "",
+                        value=str(vals.get("game_time", "") or ""),
                     ),
                 ),
             ),
@@ -341,27 +375,33 @@ def game_form(game=None, teams=None, leagues=None, positions=None):
                     select_field(
                         "home_team_id",
                         team_options,
-                        selected=str(game.home_team_id) if is_edit else "",
+                        selected=str(vals.get("home_team_id", "")),
                         required=True,
+                        error=errors.get("home_team_id", ""),
                     ),
+                    error=errors.get("home_team_id", ""),
                 ),
                 form_field(
                     "Gastteam",
                     select_field(
                         "away_team_id",
                         team_options,
-                        selected=str(game.away_team_id) if is_edit else "",
+                        selected=str(vals.get("away_team_id", "")),
                         required=True,
+                        error=errors.get("away_team_id", ""),
                     ),
+                    error=errors.get("away_team_id", ""),
                 ),
             ),
             # Spielort + Liga + Position
             form_row(
                 form_field(
                     "Spielort",
-                    text_input(
+                    datalist_input(
                         "venue",
-                        value=game.venue or "" if is_edit else "",
+                        value=str(vals.get("venue", "")),
+                        datalist_id="venue-list",
+                        options=venues,
                     ),
                 ),
                 form_field(
@@ -369,18 +409,22 @@ def game_form(game=None, teams=None, leagues=None, positions=None):
                     select_field(
                         "league_id",
                         league_options,
-                        selected=str(game.league_id) if is_edit else "",
+                        selected=str(vals.get("league_id", "")),
                         required=True,
+                        error=errors.get("league_id", ""),
                     ),
+                    error=errors.get("league_id", ""),
                 ),
                 form_field(
                     "Position",
                     select_field(
                         "position",
                         position_options,
-                        selected=game.position if is_edit else "",
+                        selected=str(vals.get("position", "")),
                         required=True,
+                        error=errors.get("position", ""),
                     ),
+                    error=errors.get("position", ""),
                 ),
             ),
             # Vergütung + Fahrtkosten + km
@@ -389,41 +433,47 @@ def game_form(game=None, teams=None, leagues=None, positions=None):
                     "Honorar (€)",
                     number_input(
                         "referee_fee",
-                        value=str(game.referee_fee) if is_edit else "0",
+                        value=str(vals.get("referee_fee", "0")),
                         step="0.01",
+                        error=errors.get("referee_fee", ""),
                     ),
+                    error=errors.get("referee_fee", ""),
                 ),
                 form_field(
                     "Fahrtkosten (€)",
                     number_input(
                         "travel_costs",
-                        value=str(game.travel_costs) if is_edit else "0",
+                        value=str(vals.get("travel_costs", "0")),
                         step="0.01",
+                        error=errors.get("travel_costs", ""),
                     ),
+                    error=errors.get("travel_costs", ""),
                 ),
                 form_field(
                     "km",
                     number_input(
                         "km_driven",
-                        value=str(game.km_driven) if is_edit else "0",
+                        value=str(vals.get("km_driven", "0")),
                         step="1",
+                        error=errors.get("km_driven", ""),
                     ),
+                    error=errors.get("km_driven", ""),
                 ),
             ),
             # Freundschaftsspiel + Bemerkungen
             checkbox_input(
                 "exhibition",
-                checked=bool(game.exhibition) if is_edit else False,
+                checked=bool(vals.get("exhibition", False)),
                 field_label="Freundschaftsspiel",
             ),
             form_field(
                 "Bemerkungen",
                 textarea_input(
                     "remarks",
-                    value=game.remarks or "" if is_edit else "",
+                    value=str(vals.get("remarks", "")),
                     rows=2,
                 ),
             ),
-            submit_button(),
+            submit_button(cancel_url="/games"),
         ],
     ]

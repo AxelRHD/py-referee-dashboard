@@ -1,10 +1,11 @@
 from collections import Counter
 
-from flask import Blueprint, redirect, request, url_for
+from flask import Blueprint, flash, redirect, request, url_for
 from sqlalchemy import func, or_
 
 from referee_dashboard.db import db
 from referee_dashboard.models import Game, League, Position, Team
+from referee_dashboard.validation import validate_game
 from referee_dashboard.views.games import game_form, game_list, game_table
 from referee_dashboard.views.layout import base_page
 
@@ -17,6 +18,18 @@ def _form_data():
     leagues = League.query.order_by(League.sorter, League.name).all()
     positions = Position.query.order_by(Position.sorter).all()
     return teams, leagues, positions
+
+
+def _venues():
+    """Fetch distinct venue values for autocomplete."""
+    rows = (
+        db.session.query(Game.venue)
+        .filter(Game.venue != "", Game.venue.isnot(None))
+        .distinct()
+        .order_by(Game.venue)
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 MONTH_NAMES = {
@@ -129,67 +142,78 @@ def index():
     return str(base_page("Spiele", *game_list(games, _filter_options(season), filters, stats)))
 
 
-@bp.route("/games/new")
+@bp.route("/games/new", methods=["GET", "POST"])
 def new():
     teams, leagues, positions = _form_data()
+    if request.method == "POST":
+        data, errors = validate_game(request.form)
+        if errors:
+            return (
+                str(
+                    base_page(
+                        "Neues Spiel",
+                        *game_form(
+                            teams=teams,
+                            leagues=leagues,
+                            positions=positions,
+                            errors=errors,
+                            data=data,
+                            venues=_venues(),
+                        ),
+                    )
+                ),
+                422,
+            )
+        game = Game(**data)
+        db.session.add(game)
+        db.session.commit()
+        flash("Spiel wurde erstellt.", "success")
+        return redirect(url_for("games.index"))
     return str(
         base_page(
             "Neues Spiel",
-            *game_form(teams=teams, leagues=leagues, positions=positions),
+            *game_form(teams=teams, leagues=leagues, positions=positions, venues=_venues()),
         )
     )
 
 
-@bp.route("/games", methods=["POST"])
-def create():
-    game = Game(
-        game_date=request.form["game_date"],
-        game_time=request.form.get("game_time") or None,
-        home_team_id=int(request.form["home_team_id"]),
-        away_team_id=int(request.form["away_team_id"]),
-        venue=request.form.get("venue", ""),
-        league_id=int(request.form["league_id"]),
-        position=request.form["position"],
-        referee_fee=float(request.form.get("referee_fee", 0)),
-        travel_costs=float(request.form.get("travel_costs", 0)),
-        km_driven=int(request.form.get("km_driven", 0)),
-        exhibition=1 if request.form.get("exhibition") else 0,
-        remarks=request.form.get("remarks", ""),
-    )
-    db.session.add(game)
-    db.session.commit()
-    return redirect(url_for("games.index"))
-
-
-@bp.route("/games/<int:id>/edit")
+@bp.route("/games/<int:id>/edit", methods=["GET", "POST"])
 def edit(id):
     game = db.get_or_404(Game, id)
     teams, leagues, positions = _form_data()
+    if request.method == "POST":
+        data, errors = validate_game(request.form)
+        if errors:
+            return (
+                str(
+                    base_page(
+                        "Spiel bearbeiten",
+                        *game_form(
+                            game=game,
+                            teams=teams,
+                            leagues=leagues,
+                            positions=positions,
+                            errors=errors,
+                            data=data,
+                            venues=_venues(),
+                        ),
+                    )
+                ),
+                422,
+            )
+        for key, val in data.items():
+            setattr(game, key, val)
+        db.session.commit()
+        flash("Spiel wurde aktualisiert.", "success")
+        return redirect(url_for("games.index"))
     return str(
         base_page(
             "Spiel bearbeiten",
-            *game_form(game=game, teams=teams, leagues=leagues, positions=positions),
+            *game_form(
+                game=game, teams=teams, leagues=leagues, positions=positions, venues=_venues()
+            ),
         )
     )
-
-
-@bp.route("/games/<int:id>", methods=["POST"])
-def update(id):
-    game = db.get_or_404(Game, id)
-    game.game_date = request.form["game_date"]
-    game.game_time = request.form.get("game_time") or None
-    game.home_team_id = int(request.form["home_team_id"])
-    game.away_team_id = int(request.form["away_team_id"])
-    game.venue = request.form.get("venue", "")
-    game.league_id = int(request.form["league_id"])
-    game.position = request.form["position"]
-    game.referee_fee = float(request.form.get("referee_fee", 0))
-    game.travel_costs = float(request.form.get("travel_costs", 0))
-    game.km_driven = int(request.form.get("km_driven", 0))
-    game.exhibition = 1 if request.form.get("exhibition") else 0
-    game.remarks = request.form.get("remarks", "")
-    db.session.commit()
-    return redirect(url_for("games.index"))
 
 
 @bp.route("/games/<int:id>/delete", methods=["POST"])
@@ -197,4 +221,5 @@ def delete(id):
     game = db.get_or_404(Game, id)
     db.session.delete(game)
     db.session.commit()
+    flash("Spiel wurde gelöscht.", "success")
     return redirect(url_for("games.index"))

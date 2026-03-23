@@ -36,24 +36,54 @@ def league_list(leagues):
     ]
 
 
-def league_form(league=None):
+def league_form(league=None, errors=None, data=None):
     """View: create/edit league form."""
+    errors = errors or {}
     is_edit = league is not None
+
+    if data:
+        vals = data
+    elif is_edit:
+        vals = {
+            "name": league.name,
+            "sorter": league.sorter,
+            "remarks": league.remarks or "",
+        }
+    else:
+        vals = {}
+
     title = "Liga bearbeiten" if is_edit else "Neue Liga"
     action = f"/leagues/{league.id}" if is_edit else "/leagues"
-
-    name = league.name if is_edit else ""
-    sorter = str(league.sorter) if is_edit else "0"
-    remarks = league.remarks or "" if is_edit else ""
 
     return [
         h1[title],
         html_form(method="post", action=action)[
             form_row(
-                form_field("Name", text_input("name", value=name, required=True)),
-                form_field("Sortierung", number_input("sorter", value=sorter, step="1")),
+                form_field(
+                    "Name",
+                    text_input(
+                        "name",
+                        value=str(vals.get("name", "")),
+                        required=True,
+                        error=errors.get("name", ""),
+                    ),
+                    error=errors.get("name", ""),
+                ),
+                form_field(
+                    "Sortierung",
+                    number_input(
+                        "sorter",
+                        value=str(vals.get("sorter", "0")),
+                        step="1",
+                        error=errors.get("sorter", ""),
+                    ),
+                    error=errors.get("sorter", ""),
+                ),
             ),
-            form_field("Bemerkungen", textarea_input("remarks", value=remarks, rows=2)),
-            submit_button(),
+            form_field(
+                "Bemerkungen",
+                textarea_input("remarks", value=str(vals.get("remarks", "")), rows=2),
+            ),
+            submit_button(cancel_url="/leagues"),
         ],
     ]
