@@ -4,7 +4,7 @@ from flask import Blueprint, Response, flash, redirect, request, url_for
 from sqlalchemy import func, or_
 
 from referee_dashboard.db import db
-from referee_dashboard.models import Game, League, Position, Team
+from referee_dashboard.models import Game, League, Position, Team, Venue
 from referee_dashboard.validation import validate_game
 from referee_dashboard.views.games import game_form, game_list, game_table
 from referee_dashboard.views.layout import base_page
@@ -13,23 +13,12 @@ bp = Blueprint("games", __name__)
 
 
 def _form_data():
-    """Fetch teams, leagues, positions for the game form."""
+    """Fetch teams, leagues, positions, venues for the game form."""
     teams = Team.query.order_by(Team.name).all()
     leagues = League.query.order_by(League.sorter, League.name).all()
     positions = Position.query.order_by(Position.sorter).all()
-    return teams, leagues, positions
-
-
-def _venues():
-    """Fetch distinct venue values for autocomplete."""
-    rows = (
-        db.session.query(Game.venue)
-        .filter(Game.venue != "", Game.venue.isnot(None))
-        .distinct()
-        .order_by(Game.venue)
-        .all()
-    )
-    return [r[0] for r in rows]
+    venues = Venue.query.order_by(Venue.city).all()
+    return teams, leagues, positions, venues
 
 
 MONTH_NAMES = {
@@ -100,11 +89,13 @@ def index():
         query = (
             query.join(ht, Game.home_team_id == ht.id)
             .join(at, Game.away_team_id == at.id)
+            .outerjoin(Venue, Game.venue_id == Venue.id)
             .filter(
                 or_(
                     ht.name.ilike(pattern),
                     at.name.ilike(pattern),
-                    Game.venue.ilike(pattern),
+                    Venue.city.ilike(pattern),
+                    Venue.stadium.ilike(pattern),
                     Game.remarks.ilike(pattern),
                 )
             )
@@ -144,7 +135,7 @@ def index():
 
 @bp.route("/games/new", methods=["GET", "POST"])
 def new():
-    teams, leagues, positions = _form_data()
+    teams, leagues, positions, venues = _form_data()
     if request.method == "POST":
         data, errors = validate_game(request.form)
         if errors:
@@ -158,7 +149,7 @@ def new():
                             positions=positions,
                             errors=errors,
                             data=data,
-                            venues=_venues(),
+                            venues=venues,
                         ),
                     )
                 ),
@@ -172,7 +163,7 @@ def new():
     return str(
         base_page(
             "Neues Spiel",
-            *game_form(teams=teams, leagues=leagues, positions=positions, venues=_venues()),
+            *game_form(teams=teams, leagues=leagues, positions=positions, venues=venues),
         )
     )
 
@@ -180,7 +171,7 @@ def new():
 @bp.route("/games/<int:id>/edit", methods=["GET", "POST"])
 def edit(id):
     game = db.get_or_404(Game, id)
-    teams, leagues, positions = _form_data()
+    teams, leagues, positions, venues = _form_data()
     if request.method == "POST":
         data, errors = validate_game(request.form)
         if errors:
@@ -195,7 +186,7 @@ def edit(id):
                             positions=positions,
                             errors=errors,
                             data=data,
-                            venues=_venues(),
+                            venues=venues,
                         ),
                     )
                 ),
@@ -209,9 +200,7 @@ def edit(id):
     return str(
         base_page(
             "Spiel bearbeiten",
-            *game_form(
-                game=game, teams=teams, leagues=leagues, positions=positions, venues=_venues()
-            ),
+            *game_form(game=game, teams=teams, leagues=leagues, positions=positions, venues=venues),
         )
     )
 

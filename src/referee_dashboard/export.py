@@ -2,7 +2,7 @@ import csv
 import io
 
 from referee_dashboard.db import db
-from referee_dashboard.models import Game, League, Position, Team
+from referee_dashboard.models import Game, League, Position, Team, Venue
 
 # ── CSV ──────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ def games_csv() -> str:
             g.game_time or "",
             g.home_team.name,
             g.away_team.name,
-            g.venue or "",
+            g.venue.display_name if g.venue else "",
             g.league.name,
             g.position,
             str(g.referee_fee).replace(".", ","),
@@ -102,7 +102,7 @@ def games_sql() -> str:
         "game_time",
         "home_team_id",
         "away_team_id",
-        "venue",
+        "venue_id",
         "league_id",
         "position",
         "referee_fee",
@@ -117,7 +117,7 @@ def games_sql() -> str:
             g.game_time,
             g.home_team_id,
             g.away_team_id,
-            g.venue,
+            g.venue_id,
             g.league_id,
             g.position,
             g.referee_fee,
@@ -138,6 +138,28 @@ def teams_sql() -> str:
     return _inserts("teams", columns, rows)
 
 
+def venues_csv() -> str:
+    venues = Venue.query.order_by(Venue.city).all()
+    header = ["Stadt", "Stadion", "Lat", "Lon"]
+    rows = [
+        [
+            v.city,
+            v.stadium or "",
+            str(v.lat) if v.lat is not None else "",
+            str(v.lon) if v.lon is not None else "",
+        ]
+        for v in venues
+    ]
+    return _csv_string(header, rows)
+
+
+def venues_sql() -> str:
+    venues = Venue.query.order_by(Venue.city).all()
+    columns = ["city", "stadium", "lat", "lon"]
+    rows = [[v.city, v.stadium, v.lat, v.lon] for v in venues]
+    return _inserts("venues", columns, rows)
+
+
 def leagues_sql() -> str:
     leagues = League.query.order_by(League.sorter, League.name).all()
     columns = ["name", "short_name", "sorter", "remarks"]
@@ -151,7 +173,7 @@ def leagues_sql() -> str:
 def full_dump() -> str:
     """Complete SQLite dump: CREATE TABLE + INSERT for all tables in FK order."""
     # FK order: positions, leagues, teams, games
-    table_order = ["positions", "leagues", "teams", "games"]
+    table_order = ["positions", "leagues", "teams", "venues", "games"]
 
     engine = db.engine
     raw = engine.raw_connection()
@@ -208,6 +230,14 @@ def all_data_sql() -> str:
         parts.append("\n-- leagues")
         parts.append(_inserts("leagues", cols, rows))
 
+    # Venues
+    venues = Venue.query.order_by(Venue.id).all()
+    if venues:
+        cols = ["id", "city", "stadium", "lat", "lon"]
+        rows = [[v.id, v.city, v.stadium, v.lat, v.lon] for v in venues]
+        parts.append("\n-- venues")
+        parts.append(_inserts("venues", cols, rows))
+
     # Teams
     teams = Team.query.order_by(Team.id).all()
     if teams:
@@ -225,7 +255,7 @@ def all_data_sql() -> str:
             "game_time",
             "home_team_id",
             "away_team_id",
-            "venue",
+            "venue_id",
             "league_id",
             "position",
             "referee_fee",
@@ -241,7 +271,7 @@ def all_data_sql() -> str:
                 g.game_time,
                 g.home_team_id,
                 g.away_team_id,
-                g.venue,
+                g.venue_id,
                 g.league_id,
                 g.position,
                 g.referee_fee,

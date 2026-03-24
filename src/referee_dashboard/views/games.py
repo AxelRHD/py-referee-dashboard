@@ -9,7 +9,6 @@ from referee_dashboard.views.components import (
     action_links,
     checkbox_input,
     data_table,
-    datalist_input,
     date_input,
     form_field,
     form_row,
@@ -269,7 +268,7 @@ def game_table(games, stats=None, page=1, filters=None):
                     td[game.league.name],
                     td[game.home_team.name],
                     td[game.away_team.name],
-                    td[game.venue or ""],
+                    td[game.venue.display_name if game.venue else ""],
                     td(".text-end")[_eur(game.referee_fee)],
                     td(".text-end")[_eur(game.travel_costs)],
                     td(".text-end")[_eur(game.referee_fee + game.travel_costs)],
@@ -330,7 +329,7 @@ def game_form(
             "game_time": game.game_time or "",
             "home_team_id": game.home_team_id,
             "away_team_id": game.away_team_id,
-            "venue": game.venue or "",
+            "venue_id": game.venue_id,
             "league_id": game.league_id,
             "position": game.position,
             "referee_fee": game.referee_fee,
@@ -348,6 +347,7 @@ def game_form(
     team_options = [(str(t.id), t.name) for t in teams]
     league_options = [(str(lg.id), lg.name) for lg in leagues]
     position_options = [(p.position, f"{p.position} — {p.long}") for p in positions]
+    venue_options = [(str(v.id), v.display_name) for v in venues]
 
     return [
         h1[title],
@@ -401,11 +401,10 @@ def game_form(
             form_row(
                 form_field(
                     "Spielort",
-                    datalist_input(
-                        "venue",
-                        value=str(vals.get("venue", "")),
-                        datalist_id="venue-list",
-                        options=venues,
+                    select_field(
+                        "venue_id",
+                        venue_options,
+                        selected=str(vals.get("venue_id", "") or ""),
                     ),
                 ),
                 form_field(

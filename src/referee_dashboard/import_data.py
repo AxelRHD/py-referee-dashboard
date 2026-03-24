@@ -113,7 +113,7 @@ _GAME_COLUMNS = {
     "uhrzeit": "game_time",
     "heimteam": "home_team_id",
     "gastteam": "away_team_id",
-    "spielort": "venue",
+    "spielort": "venue_id",
     "liga": "league_id",
     "position": "position",
     "honorar": "referee_fee",
@@ -163,7 +163,7 @@ def _csv_row_to_form(row: dict, entity: str) -> dict:
 
 def _resolve_name_to_id(field: str, value: str) -> str:
     """Resolve a name to a DB id for FK fields. Returns ID as string or original value."""
-    from referee_dashboard.models import League, Team
+    from referee_dashboard.models import League, Team, Venue
 
     if field in ("home_team_id", "away_team_id"):
         # If already numeric, keep as-is
@@ -177,6 +177,12 @@ def _resolve_name_to_id(field: str, value: str) -> str:
             return value
         league = League.query.filter(League.name == value).first()
         return str(league.id) if league else value
+
+    if field == "venue_id":
+        if value.isdigit():
+            return value
+        venue = Venue.query.filter(Venue.city == value).first()
+        return str(venue.id) if venue else value
 
     return value
 
@@ -195,7 +201,7 @@ def _transform_csv_value(field: str, value: str) -> str:
         value = "1" if value.lower() in ("ja", "1", "true", "yes", "x") else ""
 
     # FK fields: resolve names to IDs
-    if field in ("home_team_id", "away_team_id", "league_id"):
+    if field in ("home_team_id", "away_team_id", "league_id", "venue_id"):
         value = _resolve_name_to_id(field, value)
 
     return value

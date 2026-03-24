@@ -70,6 +70,9 @@ def api_overview():
             "fee": g.referee_fee,
             "travel": g.travel_costs,
             "km": g.km_driven,
+            "venue": g.venue.display_name if g.venue else "",
+            "venue_lat": g.venue.lat if g.venue else None,
+            "venue_lon": g.venue.lon if g.venue else None,
         }
         for g in games
     ]
@@ -102,7 +105,9 @@ def api_data(season):
                 "month": g.game_date[5:7],
                 "home": g.home_team.name,
                 "away": g.away_team.name,
-                "venue": g.venue or "",
+                "venue": g.venue.display_name if g.venue else "",
+                "venue_lat": g.venue.lat if g.venue else None,
+                "venue_lon": g.venue.lon if g.venue else None,
                 "league": leagues_short.get(g.league_id, ""),
                 "league_long": leagues_long.get(g.league_id, ""),
                 "league_id": g.league_id,

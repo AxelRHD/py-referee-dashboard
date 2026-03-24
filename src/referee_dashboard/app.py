@@ -24,9 +24,11 @@ def create_app():
     from referee_dashboard.routes.games import bp as games_bp
     from referee_dashboard.routes.leagues import bp as leagues_bp
     from referee_dashboard.routes.teams import bp as teams_bp
+    from referee_dashboard.routes.venues import bp as venues_bp
 
     app.register_blueprint(leagues_bp)
     app.register_blueprint(teams_bp)
+    app.register_blueprint(venues_bp)
     app.register_blueprint(games_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(data_bp)

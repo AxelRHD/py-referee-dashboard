@@ -39,6 +39,24 @@ class Position(db.Model):
     sorter = db.Column(db.Integer, nullable=False, unique=True)
 
 
+class Venue(db.Model):
+    __tablename__ = "venues"
+
+    id = db.Column(db.Integer, primary_key=True)
+    city = db.Column(db.String, nullable=False)
+    stadium = db.Column(db.String, nullable=False, default="")
+    lat = db.Column(db.Float)
+    lon = db.Column(db.Float)
+    created_at = db.Column(db.String, nullable=False, default=_now)
+    updated_at = db.Column(db.String, nullable=False, default=_now, onupdate=_now)
+
+    @property
+    def display_name(self):
+        if self.stadium:
+            return f"{self.stadium}, {self.city}"
+        return self.city
+
+
 class Game(db.Model):
     __tablename__ = "games"
 
@@ -47,7 +65,7 @@ class Game(db.Model):
     game_time = db.Column(db.String)
     home_team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
     away_team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
-    venue = db.Column(db.String, default="")
+    venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"))
     league_id = db.Column(db.Integer, db.ForeignKey("leagues.id"), nullable=False)
     position = db.Column(db.String, db.ForeignKey("positions.position"), nullable=False)
     referee_fee = db.Column(db.Float, nullable=False, default=0.0)
@@ -60,5 +78,6 @@ class Game(db.Model):
 
     home_team = db.relationship("Team", foreign_keys=[home_team_id])
     away_team = db.relationship("Team", foreign_keys=[away_team_id])
+    venue = db.relationship("Venue", foreign_keys=[venue_id])
     league = db.relationship("League", foreign_keys=[league_id])
     pos = db.relationship("Position", foreign_keys=[position])

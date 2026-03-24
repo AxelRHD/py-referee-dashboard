@@ -79,12 +79,13 @@ appdata_dir := "/mnt/data/docker/appdata/referee-dashboard"
 build:
     docker build -t referee-dashboard .
 
-# Sync source code + version to server (deletes removed files)
+# Sync source code + version to server and restart container
 [group('deploy')]
 deploy-src:
     git describe --tags --always > src/VERSION
     rsync -avz --delete src/ {{remote}}:{{appdata_dir}}/src/
     rm src/VERSION
+    gosctl run restart
 
 # Push image to server
 [group('deploy')]

@@ -106,6 +106,7 @@ def _navbar():
                     a(".nav-link", href="/games")["Spiele"],
                     a(".nav-link", href="/teams")["Teams"],
                     a(".nav-link", href="/leagues")["Ligen"],
+                    a(".nav-link", href="/venues")["Spielorte"],
                     a(".nav-link", href="/data")["Datenverwaltung"],
                 ],
                 _theme_toggle(),

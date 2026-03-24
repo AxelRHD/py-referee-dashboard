@@ -111,7 +111,11 @@ def validate_game(form):
     data["km_driven"] = _parse_int(form, "km_driven", errors, "Kilometer")
 
     # Optional
-    data["venue"] = form.get("venue", "").strip()
+    venue_raw = form.get("venue_id", "").strip()
+    try:
+        data["venue_id"] = int(venue_raw) if venue_raw else None
+    except ValueError:
+        data["venue_id"] = None
     data["exhibition"] = 1 if form.get("exhibition") else 0
     data["remarks"] = form.get("remarks", "").strip()
 
@@ -140,5 +144,16 @@ def validate_league(form):
     data["short_name"] = form.get("short_name", "").strip()
     data["sorter"] = _parse_int(form, "sorter", errors, "Sortierung")
     data["remarks"] = form.get("remarks", "").strip()
+
+    return data, errors
+
+
+def validate_venue(form):
+    """Validate venue form data. Returns (data, errors)."""
+    errors = {}
+    data = {}
+
+    data["city"] = _require(form, "city", errors, "Stadt")
+    data["stadium"] = form.get("stadium", "").strip()
 
     return data, errors
