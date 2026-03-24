@@ -88,7 +88,9 @@ def api_data(season):
     """JSON endpoint: all games for a season with resolved names."""
     games = Game.query.filter(Game.game_date.like(f"{season}-%")).all()
 
-    leagues = {lg.id: lg.short_name or lg.name for lg in League.query.all()}
+    all_leagues = League.query.all()
+    leagues_short = {lg.id: lg.short_name or lg.name for lg in all_leagues}
+    leagues_long = {lg.id: lg.name for lg in all_leagues}
     positions = [p.position for p in Position.query.order_by(Position.sorter).all()]
 
     data = []
@@ -96,11 +98,13 @@ def api_data(season):
         data.append(
             {
                 "date": g.game_date,
+                "time": g.game_time or "",
                 "month": g.game_date[5:7],
                 "home": g.home_team.name,
                 "away": g.away_team.name,
                 "venue": g.venue or "",
-                "league": leagues.get(g.league_id, ""),
+                "league": leagues_short.get(g.league_id, ""),
+                "league_long": leagues_long.get(g.league_id, ""),
                 "league_id": g.league_id,
                 "position": g.position,
                 "fee": g.referee_fee,

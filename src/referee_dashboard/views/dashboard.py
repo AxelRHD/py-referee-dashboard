@@ -10,7 +10,13 @@ from htpy import (
     select,
     small,
     span,
+    table,
+    tbody,
+    td,
     template,
+    th,
+    thead,
+    tr,
 )
 from markupsafe import Markup
 
@@ -19,6 +25,16 @@ NORD_COLORS_JS = (
 )
 
 MONTH_LABELS_JS = "['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']"
+
+
+def _fmt_date_js():
+    """JS method for German date formatting (inside Alpine object)."""
+    return """
+    fmtDate(d) {
+        if (!d || d.length < 10) return d;
+        return d.slice(8,10) + '.' + d.slice(5,7) + '.' + d.slice(0,4);
+    },
+    """
 
 
 def _eur_js():
@@ -59,6 +75,27 @@ def _stat_card(label, x_text):
             span(".fw-bold", **{"x-text": x_text}),
         ]
     ]
+
+
+def _stat_row(left_label, left_text, right_label, right_text):
+    """Two stats side by side in one card."""
+    return div(".card")[
+        div(".card-body.py-2.px-3.d-flex.justify-content-between")[
+            div[
+                small(".text-muted.d-block")[left_label],
+                span(".fw-bold", **{"x-text": left_text}),
+            ],
+            div(".text-end")[
+                small(".text-muted.d-block")[right_label],
+                span(".fw-bold", **{"x-text": right_text}),
+            ],
+        ]
+    ]
+
+
+def _sidebar_heading(text):
+    """Small section heading for sidebar."""
+    return small(".text-muted.d-block.mb-1.mt-2.fw-semibold")[text]
 
 
 def _collapsible_section(section_id, icon_class, title, *content):
@@ -121,6 +158,8 @@ def dashboard_page(seasons, default_season):
             loading: true,
             view: localStorage.getItem('db_view') || 'year',
             onlyCompleted: localStorage.getItem('db_onlyCompleted') === 'true',
+            showRecentGames: localStorage.getItem('db_showRecentGames') === 'true',
+            recentGamesLimit: localStorage.getItem('db_recentGamesLimit') || '10',
             today: new Date().toISOString().slice(0, 10),
 
             togglePosition(arr, p) {{
@@ -149,6 +188,28 @@ def dashboard_page(seasons, default_season):
                     total: fee + travel,
                     km: f.reduce((s, g) => s + g.km, 0),
                 }};
+            }},
+
+            get upcomingGames() {{
+                return this.games
+                    .filter(g => g.date >= this.today)
+                    .sort((a, b) => a.date.localeCompare(b.date)
+                        || (a.time || '').localeCompare(b.time || ''));
+            }},
+
+            get recentGames() {{
+                var all = this.games
+                    .filter(g => {{
+                        if (g.date >= this.today) return false;
+                        if (this.filterLeague && g.league_id != this.filterLeague) return false;
+                        if (this.filterPositions.length
+                            && !this.filterPositions.includes(g.position)) return false;
+                        return true;
+                    }})
+                    .sort((a, b) => b.date.localeCompare(a.date)
+                        || (b.time || '').localeCompare(a.time || ''));
+                var limit = parseInt(this.recentGamesLimit);
+                return limit > 0 ? all.slice(0, limit) : all;
             }},
 
             overviewGames: [],
@@ -260,6 +321,12 @@ def dashboard_page(seasons, default_season):
                         this.$nextTick(() => this.renderOverviewCharts());
                     }}
                 }});
+                this.$watch('showRecentGames', (v) => {{
+                    localStorage.setItem('db_showRecentGames', v);
+                }});
+                this.$watch('recentGamesLimit', (v) => {{
+                    localStorage.setItem('db_recentGamesLimit', v);
+                }});
                 this.$watch('ovFilterLeague', (v) => {{
                     localStorage.setItem('db_ovFilterLeague', v);
                     if (this.view === 'overview') {{
@@ -327,6 +394,7 @@ def dashboard_page(seasons, default_season):
                 this.renderFeeBar('chart-fee-travel', g => g.travel);
             }},
 
+            {_fmt_date_js()}
             {_eur_js()}
             {_plotly_layout_js()}
 
@@ -910,32 +978,65 @@ def dashboard_page(seasons, default_season):
                         option({":value": "'' + lg.id", "x-text": "lg.name"}),
                     ],
                 ),
-                div(".form-check.mb-3")[
-                    input(
-                        "#only-completed.form-check-input",
-                        type="checkbox",
-                        **{"x-model": "onlyCompleted"},
-                    ),
-                    label(
-                        ".form-check-label.small",
-                        for_="only-completed",
-                    )["Nur geleitet"],
+                _sidebar_heading("Spiele"),
+                div(".d-flex.align-items-center.flex-wrap.gap-2.mb-3")[
+                    div(".form-check.mb-0")[
+                        input(
+                            "#only-completed.form-check-input",
+                            type="checkbox",
+                            **{"x-model": "onlyCompleted"},
+                        ),
+                        label(
+                            ".form-check-label.small",
+                            for_="only-completed",
+                        )["Ohne offene"],
+                    ],
+                    div(
+                        ".form-check.mb-0",
+                        {"x-show": "view === 'year'"},
+                    )[
+                        input(
+                            "#show-recent.form-check-input",
+                            type="checkbox",
+                            **{"x-model": "showRecentGames"},
+                        ),
+                        label(
+                            ".form-check-label.small",
+                            for_="show-recent",
+                        )["Absolviert"],
+                    ],
+                    select(
+                        ".form-select.form-select-sm",
+                        style="width:auto",
+                        **{
+                            "x-model": "recentGamesLimit",
+                            "x-show": "view === 'year' && showRecentGames",
+                        },
+                    )[
+                        option(value="0")["Alle"],
+                        option(value="5")["5"],
+                        option(value="10")["10"],
+                        option(value="15")["15"],
+                        option(value="20")["20"],
+                    ],
                 ],
                 button(
                     ".btn.btn-outline-secondary.btn-sm.w-100.mb-3",
                     type="button",
                     **{
-                        "@click": "filterLeague = ''; filterPositions = []; onlyCompleted = true",
-                        "x-show": "filterLeague || filterPositions.length || !onlyCompleted",
+                        "@click": "filterLeague = ''; filterPositions = [];"
+                        " onlyCompleted = true;"
+                        " showRecentGames = false; recentGamesLimit = '10'",
+                        "x-show": "filterLeague || filterPositions.length"
+                        " || !onlyCompleted || showRecentGames",
                     },
                 )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
                 div(".d-flex.flex-column.gap-2")[
-                    _stat_card("Spiele", "stats.count"),
-                    _stat_card("Gesamt", "eur(stats.total)"),
-                    _stat_card("Vergütung", "eur(stats.fee)"),
-                    _stat_card("Fahrtkosten", "eur(stats.travel)"),
-                    _stat_card("Kilometer", "stats.km.toLocaleString('de-DE')"),
-                    _stat_card(
+                    _stat_row("Spiele", "stats.count", "Gesamt", "eur(stats.total)"),
+                    _stat_row("Vergütung", "eur(stats.fee)", "Fahrtkosten", "eur(stats.travel)"),
+                    _stat_row(
+                        "Kilometer",
+                        "stats.km.toLocaleString('de-DE')",
                         "ct/km",
                         "stats.km > 0"
                         " ? (stats.travel / stats.km * 100)"
@@ -994,6 +1095,7 @@ def dashboard_page(seasons, default_season):
                         ],
                     ],
                 ],
+                _sidebar_heading("Spiele"),
                 div(".form-check.mb-3")[
                     input(
                         "#only-completed-overview.form-check-input",
@@ -1003,7 +1105,7 @@ def dashboard_page(seasons, default_season):
                     label(
                         ".form-check-label.small",
                         for_="only-completed-overview",
-                    )["Nur geleitet"],
+                    )["Ohne offene"],
                 ],
                 button(
                     ".btn.btn-outline-secondary.btn-sm.w-100.mb-3",
@@ -1018,12 +1120,21 @@ def dashboard_page(seasons, default_season):
                     },
                 )[i(".bi.bi-x-circle.me-1"), "Filter zurücksetzen"],
                 div(".d-flex.flex-column.gap-2")[
-                    _stat_card("Spiele", "overviewStats.count"),
-                    _stat_card("Gesamt", "eur(overviewStats.total)"),
-                    _stat_card("Vergütung", "eur(overviewStats.fee)"),
-                    _stat_card("Fahrtkosten", "eur(overviewStats.travel)"),
-                    _stat_card("Kilometer", "overviewStats.km.toLocaleString('de-DE')"),
-                    _stat_card(
+                    _stat_row(
+                        "Spiele",
+                        "overviewStats.count",
+                        "Gesamt",
+                        "eur(overviewStats.total)",
+                    ),
+                    _stat_row(
+                        "Vergütung",
+                        "eur(overviewStats.fee)",
+                        "Fahrtkosten",
+                        "eur(overviewStats.travel)",
+                    ),
+                    _stat_row(
+                        "Kilometer",
+                        "overviewStats.km.toLocaleString('de-DE')",
                         "ct/km",
                         "overviewStats.km > 0"
                         " ? (overviewStats.travel / overviewStats.km * 100)"
@@ -1035,8 +1146,71 @@ def dashboard_page(seasons, default_season):
         ],
     ]
 
+    def _game_table_card(title, icon, x_show, x_for, count_expr=None):
+        """Reusable game table card with Alpine.js bindings."""
+        header_content = [i(f".bi.{icon}.me-1"), title]
+        if count_expr:
+            header_content.append(
+                small(".ms-2.text-muted", {"x-text": f"'(' + {count_expr} + ')'"})
+            )
+        return div(".card.mt-3", {"x-show": x_show})[
+            div(".card-header.py-2")[h6(".mb-0.text-muted")[header_content]],
+            div(".card-body.p-0")[
+                div(".table-responsive")[
+                    table(".table.table-sm.table-striped.table-hover.mb-0")[
+                        thead[
+                            tr[
+                                th(".text-nowrap.ps-3")["Datum"],
+                                th(".text-nowrap")["Zeit"],
+                                th(".text-nowrap")["Pos"],
+                                th(".text-nowrap")["Liga"],
+                                th(".text-nowrap")["Heim"],
+                                th(".text-nowrap")["Gast"],
+                                th(".text-nowrap.pe-3")["Spielort"],
+                            ],
+                        ],
+                        tbody[
+                            template({"x-for": x_for, ":key": "g.date+g.home+g.away"})[
+                                tr[
+                                    td(".ps-3", {"x-text": "fmtDate(g.date)"}),
+                                    td(".text-muted", {"x-text": "g.time"}),
+                                    td[
+                                        span(
+                                            ".badge.bg-secondary",
+                                            {"x-text": "g.position"},
+                                        )
+                                    ],
+                                    td({"x-text": "g.league_long || g.league"}),
+                                    td(".fw-semibold", {"x-text": "g.home"}),
+                                    td(".fw-semibold", {"x-text": "g.away"}),
+                                    td(".text-muted.pe-3", {"x-text": "g.venue"}),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]
+
+    upcoming_section = _game_table_card(
+        "Anstehende Spiele",
+        "bi-calendar-event",
+        "view === 'year' && upcomingGames.length > 0",
+        "g in upcomingGames",
+    )
+
+    recent_section = _game_table_card(
+        "Absolvierte Spiele",
+        "bi-calendar-check",
+        "view === 'year' && showRecentGames && recentGames.length > 0",
+        "g in recentGames",
+        count_expr="recentGames.length",
+    )
+
     # Charts area (year view only)
     charts = div(".col-md-10", {"x-show": "view === 'year'"})[
+        upcoming_section,
+        recent_section,
         _collapsible_section(
             "charts-body",
             "bi.bi-bar-chart-fill",
